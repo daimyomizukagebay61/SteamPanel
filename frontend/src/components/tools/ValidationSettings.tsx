@@ -1,0 +1,149 @@
+import { useState, useEffect, useRef } from "react";
+import type { ValidationSettings as VS } from "@/api/types";
+import { api } from "@/api/client";
+import { useUiStore } from "@/stores/uiStore";
+import { useT } from "@/lib/i18n";
+import { IconSettings } from "@/components/shared/Icons";
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="toggle-switch">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span className="toggle-track" />
+    </label>
+  );
+}
+
+function SettingRow({ label, desc, checked, onChange }: {
+  label: string;
+  desc?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <div className="min-w-0">
+        <p className="text-sm text-gray-200 leading-tight">{label}</p>
+        {desc && <p className="text-xs text-gray-500 mt-0.5">{desc}</p>}
+      </div>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+function ThreadStepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const clamp = (n: number) => Math.max(1, n);
+  const commit = () => {
+    onChange(clamp(parseInt(input) || value));
+    setEditing(false);
+  };
+
+  const btnCls = "h-6 px-1.5 rounded bg-dark-700 border border-dark-600 text-gray-300 hover:bg-dark-600 text-xs flex items-center justify-center select-none leading-none";
+
+  return (
+    <div className="flex items-center gap-3 pt-3 mt-0.5">
+      <span className="text-sm text-gray-400 flex-1" title="Двойной клик на числе для ручного ввода">Max threads</span>
+      <div className="flex items-center gap-1">
+        <button type="button" className={btnCls} onClick={() => onChange(clamp(value - 10))}>-10</button>
+        <button type="button" className={btnCls} onClick={() => onChange(clamp(value - 1))}>-1</button>
+        {editing ? (
+          <input
+            ref={inputRef}
+            autoFocus
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+            className="w-10 text-center text-sm font-mono bg-dark-900 border border-accent rounded outline-none text-gray-100 py-0.5"
+          />
+        ) : (
+          <span
+            className="w-10 text-center text-sm font-mono text-gray-100 cursor-pointer select-none"
+            onDoubleClick={() => { setInput(String(value)); setEditing(true); }}
+            title="Двойной клик для ручного ввода"
+          >{value}</span>
+        )}
+        <button type="button" className={btnCls} onClick={() => onChange(clamp(value + 1))}>+1</button>
+        <button type="button" className={btnCls} onClick={() => onChange(clamp(value + 10))}>+10</button>
+      </div>
+    </div>
+  );
+}
+
+export function ValidationSettings() {
+  const t = useT();
+  const [settings, setSettings] = useState<VS>({
+    fetch_profile: true,
+    check_ban: true,
+    max_threads: 5,
+    auto_revalidate_browser: true,
+  });
+  const hidePasswords = useUiStore((s) => s.hidePasswords);
+  const setHidePasswords = useUiStore((s) => s.setHidePasswords);
+  const addToast = useUiStore((s) => s.addToast);
+
+  useEffect(() => {
+    api.getValidationSettings().then(setSettings).catch(() => {});
+  }, []);
+
+  const save = async () => {
+    try {
+      await api.updateValidationSettings(settings);
+      addToast("success", t("toast.settingsSaved"));
+    } catch (e: unknown) {
+      addToast("error", t("misc.error", { error: e instanceof Error ? e.message : String(e) }));
+    }
+  };
+
+  return (
+    <div className="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden flex flex-col">
+      <div className="px-5 py-3.5 border-b border-dark-600 flex items-center gap-2.5">
+        <IconSettings size={15} className="text-accent shrink-0" />
+        <span className="text-sm font-semibold text-gray-100">Settings</span>
+      </div>
+
+      <div className="px-5 pt-4 pb-3 border-b border-dark-600">
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-0.5">
+          {t("tools.validationSettings")}
+        </p>
+        <div className="divide-y divide-dark-600/60">
+          <SettingRow
+            label={t("tools.loadProfile")}
+            checked={settings.fetch_profile}
+            onChange={(v) => setSettings({ ...settings, fetch_profile: v })}
+          />
+          <SettingRow
+            label={t("tools.checkBans")}
+            checked={settings.check_ban}
+            onChange={(v) => setSettings({ ...settings, check_ban: v })}
+          />
+          <SettingRow
+            label={t("tools.autoRevalidateBrowser")}
+            checked={settings.auto_revalidate_browser}
+            onChange={(v) => setSettings({ ...settings, auto_revalidate_browser: v })}
+          />
+        </div>
+        <ThreadStepper value={settings.max_threads} onChange={(v) => setSettings((s) => ({ ...s, max_threads: v }))} />
+      </div>
+
+      <div className="px-5 pt-4 pb-3">
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-0.5">
+          {t("settings.display")}
+        </p>
+        <SettingRow
+          label={t("settings.hidePasswords")}
+          checked={hidePasswords}
+          onChange={setHidePasswords}
+        />
+      </div>
+
+      <div className="px-5 py-3 border-t border-dark-600 flex justify-end">
+        <button onClick={save} className="btn-primary">{t("btn.save")}</button>
+      </div>
+    </div>
+  );
+}

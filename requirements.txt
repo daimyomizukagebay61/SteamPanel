@@ -1,0 +1,40 @@
+# === SteamPanel v0.3.0 ===
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.9.0
+pydantic-settings>=2.5.0
+python-multipart>=0.0.9
+
+# Database
+aiosqlite>=0.20.0
+
+# HTTP & Proxy
+aiohttp>=3.10.0
+aiohttp-socks>=0.9.0
+requests>=2.32.0
+
+# Parsing & Encoding
+beautifulsoup4>=4.14.0
+lxml>=5.3.0
+protobuf>=5.28.0
+rsa>=4.7
+
+# Logging
+loguru>=0.7.3
+
+# Browser automation
+nodriver
+
+# Steam auth (embedded locally from pysteamauth, no pip install needed)
+bitstring>=3.1.2
+aiofiles>=22.1.0
+cssselect>=1.1.0
+yarl>=1.9.0
+
+# Utils
+typing_extensions>=4.15.0
+
+# Dev
+pytest>=9.0.0

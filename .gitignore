@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+venv/
+.venv/
+docs/
+
+# Frontend
+frontend/node_modules/
+
+# app/static/assets/
+# app/static/index.html
+
+# User data — DB, mafiles, logs, settings
+data/
+
+# IDE / tools
+.github/
+.vscode/
+.history/
+.serena/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Misc
+example/
+*.log
