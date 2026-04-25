@@ -53,19 +53,23 @@ async def upload_mafiles(files: list[UploadFile] = File(...)):
         try:
             mafile = MafileData.model_validate_json(content)
             steam_id = mafile.Session.SteamID or mafile.account_name or file.filename
-            dest = settings.mafiles_dir / f"{steam_id}.mafile"
+            safe_name = Path(str(steam_id)).name
+            dest = settings.mafiles_dir / f"{safe_name}.mafile"
             dest.write_text(content, encoding="utf-8")
             uploaded += 1
 
             if mafile.account_name:
+                mafile_steam_id = str(mafile.Session.SteamID) if mafile.Session.SteamID else None
                 await db.execute(
                     """UPDATE accounts
-                       SET mafile_path = ?, shared_secret = ?, identity_secret = ?
+                       SET mafile_path = ?, shared_secret = ?, identity_secret = ?,
+                           steam_id = COALESCE(steam_id, ?)
                        WHERE login = ?""",
                     (
                         str(dest),
                         mafile.shared_secret or "",
                         mafile.identity_secret or "",
+                        mafile_steam_id,
                         mafile.account_name,
                     ),
                 )

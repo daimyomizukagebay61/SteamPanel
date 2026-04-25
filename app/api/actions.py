@@ -84,3 +84,54 @@ async def generate_2fa_by_account(request: Generate2FAByAccountRequest):
     if not row or not row["shared_secret"]:
         raise HTTPException(status_code=404, detail="Account not found or has no shared_secret")
     return {"code": gen_code(row["shared_secret"])}
+
+
+class ConfirmationRespondRequest(BaseModel):
+    ids: list[str]
+    nonces: list[str]
+    accept: bool
+
+
+@router.get("/confirmations/{account_id}")
+async def get_confirmations(account_id: int):
+    """Fetch pending Steam confirmations for an account."""
+    from app.services.steam_confirmations import fetch_confirmations
+
+    db = await get_db()
+    cursor = await db.execute("SELECT * FROM accounts WHERE id = ?", (account_id,))
+    account = await cursor.fetchone()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        confirmations = await fetch_confirmations(dict(account))
+        return {"success": True, "confirmations": confirmations}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[confirmations] Error fetching for account {account_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/confirmations/{account_id}/respond")
+async def respond_confirmations(account_id: int, request: ConfirmationRespondRequest):
+    """Accept or deny confirmations for an account."""
+    from app.services.steam_confirmations import respond_to_confirmation
+
+    if len(request.ids) != len(request.nonces):
+        raise HTTPException(status_code=400, detail="ids and nonces must have same length")
+
+    db = await get_db()
+    cursor = await db.execute("SELECT * FROM accounts WHERE id = ?", (account_id,))
+    account = await cursor.fetchone()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        success = await respond_to_confirmation(dict(account), request.ids, request.nonces, request.accept)
+        return {"success": success}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[confirmations] Error responding for account {account_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

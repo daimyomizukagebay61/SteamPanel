@@ -47,7 +47,9 @@ export function ImportModal({ onClose }: Props) {
           <p className="font-medium text-gray-300">{t("import.formats")} <span className="text-gray-500 font-normal">({t("import.delimiter")} <code className="text-accent">:</code> {t("import.or")} <code className="text-accent">|</code>)</span></p>
           <p className="font-mono text-xs">login:pass:{"{"}mafile{"}"}</p>
           <p className="font-mono text-xs">login:pass:email:email_pass:{"{"}mafile{"}"}</p>
+          <p className="font-mono text-xs">login:pass:email:email_pass:{"{"}mafile{"}"}:notes</p>
           <p className="font-mono text-xs">login:pass:email:email_pass</p>
+          <p className="font-mono text-xs">login:pass:email:email_pass:notes</p>
         </div>
         <div
           onDragOver={(e) => e.preventDefault()}

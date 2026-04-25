@@ -34,7 +34,8 @@ def read_mafile_data(account: dict) -> dict | None:
         return None
     try:
         return json.loads(Path(mafile_path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, ValueError):
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        logger.warning(f"Failed to read mafile for {account.get('login', '?')}: {exc}")
         return None
 
 
@@ -80,7 +81,8 @@ async def create_steam_session(account: dict):
         shared_secret = mafile.get("shared_secret", shared_secret)
         identity_secret = mafile.get("identity_secret", identity_secret)
         device_id = mafile.get("device_id")
-        steamid = int(mafile.get("Session", {}).get("SteamID", 0)) or None
+        steamid_raw = (mafile.get("Session") or {}).get("SteamID") or 0
+        steamid = int(steamid_raw) or None
 
     steam = Steam(
         login=account["login"],
@@ -154,6 +156,61 @@ def extract_session_cookies(steam) -> str | None:
         return json.dumps(all_cookies)
     except Exception:
         return None
+
+def update_mafile_tokens(steam, account: dict) -> bool:
+    """Extract fresh tokens from a logged-in steam session and update the .mafile on disk."""
+    mafile_path = account.get("mafile_path")
+    if not mafile_path:
+        return False
+
+    try:
+        mafile = json.loads(Path(mafile_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    _req = getattr(steam, "_requests", None)
+    _sess = getattr(_req, "_session", None) if _req else None
+    if not _sess or not hasattr(_sess, "cookie_jar"):
+        return False
+
+    access_token = None
+    session_id = None
+    steam_id = str(getattr(steam, "_steamid", "") or "")
+
+    for c in _sess.cookie_jar:
+        if c.key == "steamLoginSecure" and c.value:
+            raw = __import__("urllib.parse", fromlist=["unquote"]).unquote(c.value)
+            if "||" in raw:
+                parts = raw.split("||", 1)
+                if not steam_id:
+                    steam_id = parts[0]
+                access_token = parts[1]
+        elif c.key == "sessionid" and c.value:
+            session_id = c.value
+
+    if not access_token:
+        return False
+
+    session = mafile.setdefault("Session", {})
+    session["AccessToken"] = access_token
+    if session_id:
+        session["SessionID"] = session_id
+    if steam_id:
+        session["SteamID"] = steam_id
+        session["SteamLoginSecure"] = f"{steam_id}%7C%7C{access_token}"
+
+    refresh_token = getattr(steam, "_refresh_token", None)
+    if refresh_token:
+        session["RefreshToken"] = refresh_token
+
+    try:
+        Path(mafile_path).write_text(json.dumps(mafile, indent=2, ensure_ascii=False), encoding="utf-8")
+        logger.debug(f"[auth] Updated mafile tokens: {mafile_path}")
+        return True
+    except OSError as e:
+        logger.warning(f"[auth] Failed to update mafile: {e}")
+        return False
+
 
 async def check_cookies_alive(cookies_json: str, proxy: dict | None = None) -> bool:
     """Check if Steam session cookies are still valid.

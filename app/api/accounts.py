@@ -215,7 +215,9 @@ async def import_accounts(file: UploadFile = File(...)):
     Supported formats (: or | separator):
       login|password|{mafile_json}
       login|password|email|email_password|{mafile_json}
+      login|password|email|email_password|{mafile_json}|notes
       login|password|email|email_password
+      login|password|email|email_password|notes  (no mafile, with notes)
     """
     content = (await file.read()).decode("utf-8", errors="ignore")
     result = BulkImportResult()
@@ -226,11 +228,27 @@ async def import_accounts(file: UploadFile = File(...)):
         if not line:
             continue
 
-        # Split off embedded mafile JSON (everything from first '{' onward)
+        notes: str | None = None
+
+        # Split off embedded mafile JSON — find matching braces
         json_start = line.find("{")
         if json_start != -1:
-            mafile_str = line[json_start:]
+            depth = 0
+            json_end = json_start
+            for i in range(json_start, len(line)):
+                if line[i] == "{":
+                    depth += 1
+                elif line[i] == "}":
+                    depth -= 1
+                if depth == 0:
+                    json_end = i
+                    break
+
+            mafile_str = line[json_start : json_end + 1]
             prefix = line[:json_start].rstrip("|:")
+            suffix = line[json_end + 1 :].lstrip("|:")
+            if suffix:
+                notes = suffix
         else:
             mafile_str = None
             prefix = line
@@ -262,12 +280,15 @@ async def import_accounts(file: UploadFile = File(...)):
                 email = mafile_data.get("mail") or mafile_data.get("email") or None
                 email_password = mafile_data.get("mail_password") or mafile_data.get("email_password") or None
         else:
-            # No mafile — must be exactly 4 fields
-            if len(parts) != 4:
-                result.errors.append(f"Invalid line (need 4 fields): {line[:50]}")
+            # No mafile — 4 fields, or 5 fields with notes
+            if len(parts) == 5:
+                login, password, email, email_password, notes = parts
+            elif len(parts) == 4:
+                login, password, email, email_password = parts
+            else:
+                result.errors.append(f"Invalid line (need 4-5 fields): {line[:50]}")
                 result.skipped += 1
                 continue
-            login, password, email, email_password = parts
             mafile_data = None
 
         try:
@@ -281,9 +302,9 @@ async def import_accounts(file: UploadFile = File(...)):
                 continue
 
             await db.execute(
-                """INSERT INTO accounts (login, password, email, email_password)
-                   VALUES (?, ?, ?, ?)""",
-                (login, password, email or None, email_password or None),
+                """INSERT INTO accounts (login, password, email, email_password, notes)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (login, password, email or None, email_password or None, notes or None),
             )
             result.imported += 1
         except Exception as exc:
@@ -298,7 +319,8 @@ async def import_accounts(file: UploadFile = File(...)):
             steam_id = (mafile_data.get("Session") or {}).get("SteamID") or None
 
             settings.mafiles_dir.mkdir(parents=True, exist_ok=True)
-            dest = settings.mafiles_dir / f"{account_name}.mafile"
+            safe_name = Path(account_name).name
+            dest = settings.mafiles_dir / f"{safe_name}.mafile"
             dest.write_text(json.dumps(mafile_data, ensure_ascii=False), encoding="utf-8")
 
             await db.execute(
@@ -325,12 +347,13 @@ async def upload_mafile(account_id: int, file: UploadFile = File(...)):
     content = (await file.read()).decode("utf-8")
     try:
         mafile = MafileData.model_validate_json(content)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid mafile format")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid mafile format: {exc}")
 
     settings.mafiles_dir.mkdir(parents=True, exist_ok=True)
     steam_id = mafile.Session.SteamID or row["steam_id"] or account_id
-    mafile_path = settings.mafiles_dir / f"{steam_id}.mafile"
+    safe_name = Path(str(steam_id)).name
+    mafile_path = settings.mafiles_dir / f"{safe_name}.mafile"
     mafile_path.write_text(content, encoding="utf-8")
 
     await db.execute(

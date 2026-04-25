@@ -5,7 +5,9 @@ import { api } from "@/api/client";
 import { useAccountStore } from "@/stores/accountStore";
 import { useUiStore } from "@/stores/uiStore";
 import { IconZap } from "@/components/shared/Icons";
+import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
+import { ConfirmationsModal } from "./ConfirmationsModal";
 
 const ROW_ACTION_KEYS = [
   { action: "validate", labelKey: "action.validate" },
@@ -43,6 +45,7 @@ export function ActionMenu({ account, onAction, onToggleAutoAccept }: Props) {
   const [paramPrompt, setParamPrompt] = useState<{ action: string; title: string } | null>(null);
   const [paramValue, setParamValue] = useState("");
   const [confirmPrompt, setConfirmPrompt] = useState<{ action: string; title: string } | null>(null);
+  const [showConfirmations, setShowConfirmations] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -107,6 +110,26 @@ export function ActionMenu({ account, onAction, onToggleAutoAccept }: Props) {
 
   const aaLabel = account.auto_accept ? t("action.disableAutoAccept") : t("action.enableAutoAcceptLogin");
 
+  const handleGenerate2FA = async () => {
+    setOpen(false);
+    if (!account.shared_secret) {
+      addToast("error", t("twofa.error", { error: "No shared_secret" }));
+      return;
+    }
+    try {
+      const { code } = await api.generate2FA(account.shared_secret);
+      await copyText(code);
+      addToast("success", t("twofa.copied", { code }));
+    } catch (e: unknown) {
+      addToast("error", t("twofa.error", { error: e instanceof Error ? e.message : String(e) }));
+    }
+  };
+
+  const handleOpenConfirmations = () => {
+    setOpen(false);
+    setShowConfirmations(true);
+  };
+
   const handleRemoveProxy = async () => {
     setOpen(false);
     try {
@@ -158,6 +181,21 @@ export function ActionMenu({ account, onAction, onToggleAutoAccept }: Props) {
                 </button>
               );
             })}
+            <hr className="border-dark-600 my-1" />
+            <button
+              onClick={handleGenerate2FA}
+              disabled={!account.shared_secret}
+              className={`action-menu-item ${!account.shared_secret ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              {t("action.generate2fa")}
+            </button>
+            <button
+              onClick={handleOpenConfirmations}
+              disabled={!account.identity_secret}
+              className={`action-menu-item ${!account.identity_secret ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              {t("action.confirmations")}
+            </button>
             <hr className="border-dark-600 my-1" />
             <button onClick={handleRemoveProxy} className="action-menu-item">
               {t("proxy.removeProxy")}
@@ -213,6 +251,10 @@ export function ActionMenu({ account, onAction, onToggleAutoAccept }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {showConfirmations && (
+        <ConfirmationsModal account={account} onClose={() => setShowConfirmations(false)} />
       )}
     </>
   );

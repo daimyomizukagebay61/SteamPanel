@@ -62,6 +62,7 @@ class Steam:
         self._device_id = device_id
         self._requests = request_strategy if request_strategy is not None else BaseRequestStrategy()
         self._storage = cookie_storage if cookie_storage is not None else BaseCookieStorage()
+        self._refresh_token: Optional[str] = None
 
     @property
     def steamid(self) -> int:
@@ -156,10 +157,10 @@ class Steam:
             encrypted_password=encrypted_password,
             encryption_timestamp=rsa_timestamp,
             remember_login=True,
-            platform_type=EAuthTokenPlatformType.k_EAuthTokenPlatformType_WebBrowser,
-            website_id='Community',
+            platform_type=EAuthTokenPlatformType.k_EAuthTokenPlatformType_MobileApp,
+            website_id='Mobile',
             persistence=ESessionPersistence.k_ESessionPersistence_Persistent,
-            device_friendly_name='Mozilla/5.0 (X11; Linux x86_64; rv:1.9.5.20) Gecko/2812-12-10 04:56:28 Firefox/3.8',
+            device_friendly_name=self._device_id or 'android:unknown',
         )
         response = await self._requests.bytes(
             method='POST',
@@ -328,7 +329,10 @@ class Steam:
         )
 
     def _is_twofactor_required(self, confirmation: CAuthentication_AllowedConfirmation) -> bool:
-        return confirmation.confirmation_type == EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode
+        return confirmation.confirmation_type in (
+            EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode,
+            EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation,
+        )
 
     async def login_to_steam(self) -> None:
         if await self.is_authorized():
@@ -358,6 +362,7 @@ class Steam:
             client_id=auth_session.client_id,
             request_id=auth_session.request_id,
         )
+        self._refresh_token = session.refresh_token
         tokens = await self._finalize_login(
             refresh_token=session.refresh_token,
             sessionid=self._requests.cookies()['sessionid'],

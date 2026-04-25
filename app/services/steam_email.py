@@ -165,6 +165,10 @@ async def validate_account(account: dict, params: dict, task_id: str = "") -> No
             except Exception as cookie_err:
                 logger.warning(f"[validate] {login}: failed to save cookies — {cookie_err}")
 
+            from app.services.steam_auth import update_mafile_tokens
+            if update_mafile_tokens(steam, account):
+                logger.info(f"[validate] {login}: updated mafile tokens")
+
     except Exception as exc:
         status = "invalid"
         error_msg = str(exc)

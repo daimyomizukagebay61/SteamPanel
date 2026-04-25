@@ -60,6 +60,13 @@ export const api = {
     request<{ code: string }>("/actions/generate-2fa", { method: "POST", body: JSON.stringify({ shared_secret }) }),
   generate2FAByAccount: (account_id: number) =>
     request<{ code: string }>("/actions/generate-2fa-by-account", { method: "POST", body: JSON.stringify({ account_id }) }),
+  getConfirmations: (account_id: number) =>
+    request<{ success: boolean; confirmations: import("./types").SteamConfirmation[] }>(`/actions/confirmations/${account_id}`),
+  respondConfirmations: (account_id: number, ids: string[], nonces: string[], accept: boolean) =>
+    request<{ success: boolean }>(`/actions/confirmations/${account_id}/respond`, {
+      method: "POST",
+      body: JSON.stringify({ ids, nonces, accept }),
+    }),
 
   // Proxies
   getProxies: () => request<Proxy[]>("/proxies"),

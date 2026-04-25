@@ -11,7 +11,7 @@ mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("image/svg+xml", ".svg")
 from loguru import logger
 
-VERSION = "0.3.2"
+VERSION = "0.3.4"
 
 from app.config import settings
 from app.core.logging import setup_logging

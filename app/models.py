@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AccountCreate(BaseModel):
@@ -90,14 +90,18 @@ class ProxyOut(BaseModel):
 
 
 class MafileSession(BaseModel):
-    SessionID: str = ""
+    model_config = ConfigDict(extra="ignore")
+
+    SessionID: str | None = ""
     AccessToken: str = ""
     RefreshToken: str = ""
-    SteamID: int = 0
-    SteamLoginSecure: str = ""
+    SteamID: int | None = 0
+    SteamLoginSecure: str | None = ""
 
 
 class MafileData(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     shared_secret: str
     serial_number: str = ""
     revocation_code: str = ""
@@ -107,7 +111,7 @@ class MafileData(BaseModel):
     identity_secret: str = ""
     secret_1: str = ""
     device_id: str = ""
-    server_time: str = ""
+    server_time: str | int = ""
     fully_enrolled: bool = False
     Session: MafileSession = Field(default_factory=MafileSession)
 

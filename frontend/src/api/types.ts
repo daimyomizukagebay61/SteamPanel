@@ -258,3 +258,16 @@ export interface Toast {
   type: ToastType;
   message: string;
 }
+
+export interface SteamConfirmation {
+  id: string;
+  nonce: string;
+  type: number;
+  type_name: string;
+  creator_id: string;
+  headline: string;
+  summary: string[];
+  accept: string;
+  cancel: string;
+  icon: string;
+}
