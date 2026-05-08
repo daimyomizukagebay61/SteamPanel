@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
 
@@ -32,6 +33,14 @@ _VALIDATION_DEFAULTS: dict = {
     "max_threads": 10,
     "account_timeout": 90,
     "auto_revalidate_browser": True,
+    "auto_proxy_on_import": False,
+    "auto_validate_on_import": False,
+    "auto_proxy_on_import_mafile": True,
+    "auto_proxy_on_import_logpass": True,
+    "auto_proxy_on_import_token": True,
+    "auto_validate_on_import_mafile": True,
+    "auto_validate_on_import_logpass": True,
+    "auto_validate_on_import_token": True,
 }
 
 

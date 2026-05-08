@@ -71,7 +71,10 @@ export interface Task {
   step_label?: string;
   active_count?: number;
   account_ids?: string | null;
-  account_results?: Record<string, { status: string; error?: string }> | string | null;
+  account_results?:
+    | Record<string, { status: string; error?: string }>
+    | string
+    | null;
   account_steps?: Record<string, { step: number; total: number }>;
   created_at: string;
   updated_at: string;
@@ -118,6 +121,14 @@ export interface ValidationSettings {
   check_ban: boolean;
   max_threads: number;
   auto_revalidate_browser: boolean;
+  auto_proxy_on_import: boolean;
+  auto_validate_on_import: boolean;
+  auto_proxy_on_import_mafile: boolean;
+  auto_proxy_on_import_logpass: boolean;
+  auto_proxy_on_import_token: boolean;
+  auto_validate_on_import_mafile: boolean;
+  auto_validate_on_import_logpass: boolean;
+  auto_validate_on_import_token: boolean;
 }
 
 export interface DisplaySettings {
@@ -257,6 +268,32 @@ export interface Toast {
   id: number;
   type: ToastType;
   message: string;
+}
+
+export interface TokenCheckData {
+  steam_id: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  steam_level: number | null;
+  last_online: string | null;
+  balance_raw: string | null;
+  user_country: string | null;
+  family_group: boolean;
+  playtime_2weeks: number;
+  inventory_cs2: number;
+  inventory_dota2: number;
+  inventory_tf2: number;
+  inventory_rust: number;
+  inventory_cs2_marketable: number;
+  inventory_dota2_marketable: number;
+  inventory_tf2_marketable: number;
+  inventory_rust_marketable: number;
+  trade_ban: string | null;
+  created_date: string | null;
+  phone_digits: string | null;
+  alert_status: string;
+  market_limited: boolean;
+  checked_at: string | null;
 }
 
 export interface SteamConfirmation {

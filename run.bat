@@ -40,6 +40,13 @@ if errorlevel 1 (
 :launch
 cls
 
+rem === Patch nodriver/cdp/network.py encoding bug (non-UTF-8 byte \xb1 in comment) ===
+venv\Scripts\python.exe -c ^
+  "import pathlib;^
+   p=pathlib.Path('venv/Lib/site-packages/nodriver/cdp/network.py');^
+   d=p.read_bytes() if p.exists() else b'';^
+   p.write_bytes(d.replace(b'\xb1',b'+-')) if p.exists() and b'\xb1' in d else None"
+
 rem === Check built frontend ===
 if not exist "app\static\assets\" (
     echo.

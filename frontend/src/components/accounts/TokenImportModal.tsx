@@ -7,9 +7,10 @@ import { useT } from "@/lib/i18n";
 
 interface Props {
   onClose: () => void;
+  onImportDone?: (newIds: number[]) => void;
 }
 
-export function TokenImportModal({ onClose }: Props) {
+export function TokenImportModal({ onClose, onImportDone }: Props) {
   const t = useT();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState("");
@@ -29,12 +30,32 @@ export function TokenImportModal({ onClose }: Props) {
     setUploading(true);
     try {
       const text = await file.text();
-      const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-      if (!lines.length) { setResult(t("toast.fileEmpty")); setUploading(false); return; }
+      const lines = text
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (!lines.length) {
+        setResult(t("toast.fileEmpty"));
+        setUploading(false);
+        return;
+      }
+      const idsBefore = new Set(
+        useTokenStore.getState().accounts.map((a) => a.id),
+      );
       const res = await api.importTokens(lines);
-      setResult(t("toast.importResult", { imported: res.imported, skipped: res.skipped }));
+      setResult(
+        t("toast.importResult", {
+          imported: res.imported,
+          skipped: res.skipped,
+        }),
+      );
       addToast("success", `${res.imported} ok, ${res.skipped} skip`);
       await loadAccounts();
+      const newIds = useTokenStore
+        .getState()
+        .accounts.map((a) => a.id)
+        .filter((id) => !idsBefore.has(id));
+      onImportDone?.(newIds);
     } catch (e: unknown) {
       setResult(e instanceof Error ? e.message : t("misc.errorStr"));
     } finally {
@@ -44,10 +65,17 @@ export function TokenImportModal({ onClose }: Props) {
 
   return (
     <div className="confirm-overlay" onMouseDown={onClose}>
-      <div className="confirm-box max-w-lg w-full" onMouseDown={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold mb-4">{t("modal.importTokens")}</h3>
+      <div
+        className="confirm-box max-w-lg w-full"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold mb-4">
+          {t("modal.importTokens")}
+        </h3>
         <div className="text-sm text-gray-400 mb-3 space-y-1">
-          <p className="font-medium text-gray-300">{t("import.formatsColon")}</p>
+          <p className="font-medium text-gray-300">
+            {t("import.formatsColon")}
+          </p>
           <p className="font-mono text-xs">{t("import.tokenFormat")}</p>
         </div>
         <div
@@ -58,14 +86,26 @@ export function TokenImportModal({ onClose }: Props) {
         >
           <IconUpload size={32} className="mx-auto mb-2 text-gray-500" />
           <p className="text-sm text-gray-400">
-            {file ? t("import.selected", { name: file.name }) : t("import.dragTxt")}
+            {file
+              ? t("import.selected", { name: file.name })
+              : t("import.dragTxt")}
           </p>
         </div>
-        <input ref={inputRef} type="file" accept=".txt" className="hidden" onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) setFile(f);
-        }} />
-        <button onClick={doImport} disabled={!file || uploading} className="btn-primary w-full">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".txt"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) setFile(f);
+          }}
+        />
+        <button
+          onClick={doImport}
+          disabled={!file || uploading}
+          className="btn-primary w-full"
+        >
           {uploading ? t("import.uploading") : t("import.importBtn")}
         </button>
         {result && <p className="mt-3 text-sm text-gray-300">{result}</p>}

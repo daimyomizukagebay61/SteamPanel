@@ -7,9 +7,13 @@ const STORAGE_KEY = "steampanel_locale";
 let _locale: Locale = (localStorage.getItem(STORAGE_KEY) as Locale) || "ru";
 const _listeners = new Set<() => void>();
 
-function notify() { _listeners.forEach((l) => l()); }
+function notify() {
+  _listeners.forEach((l) => l());
+}
 
-export function getLocale(): Locale { return _locale; }
+export function getLocale(): Locale {
+  return _locale;
+}
 
 export function setLocale(l: Locale) {
   _locale = l;
@@ -19,7 +23,10 @@ export function setLocale(l: Locale) {
 
 export function useLocale(): [Locale, (l: Locale) => void] {
   const locale = useSyncExternalStore(
-    (cb) => { _listeners.add(cb); return () => _listeners.delete(cb); },
+    (cb) => {
+      _listeners.add(cb);
+      return () => _listeners.delete(cb);
+    },
     () => _locale,
   );
   return [locale, setLocale];
@@ -82,7 +89,8 @@ const translations: Translations = {
     "prompt.newPassword": "Введите новый пароль",
     "prompt.newEmail": "Введите новый email",
     "prompt.newPhone": "Введите новый номер телефона",
-    "prompt.removePhone": "Введите номер телефона (на который переставится старый)",
+    "prompt.removePhone":
+      "Введите номер телефона (на который переставится старый)",
     "prompt.enterValue": "Введите значение...",
     // -- Confirm dialogs --
     "confirm.removeGuard": "Удалить Steam Guard для этого аккаунта?",
@@ -123,6 +131,7 @@ const translations: Translations = {
     "btn.clearProxies": "Очистить прокси",
     "btn.validate": "Валидировать",
     "btn.fullParse": "Полный парс",
+    "btn.fullCheck": "Полная проверка",
     "btn.generate": "Сгенерировать",
     // -- Toast messages --
     "toast.copied": "Скопировано",
@@ -142,7 +151,8 @@ const translations: Translations = {
     "toast.autoAcceptOff": "Авто-принятие входа выключено",
     "toast.taskCancelled": "Задача отменена",
     "toast.browserOpening": "Браузер открывается...",
-    "toast.cookiesExpiredRevalidating": "Куки устарели. Запущена повторная валидация...",
+    "toast.cookiesExpiredRevalidating":
+      "Куки устарели. Запущена повторная валидация...",
     "toast.cookiesExpired": "Куки устарели. Провалидируйте аккаунт заново.",
     "toast.proxyCleared": "Прокси убран у {name}",
     "toast.proxiesReassigned": "Переназначено {used} прокси на {count} акк.",
@@ -249,7 +259,8 @@ const translations: Translations = {
     "proxy.checking": "Проверка...",
     "proxy.checkAll": "Проверить все",
     "proxy.deleteAllBtn": "Удалить все прокси",
-    "proxy.confirmDeleteAll": "Удалить все прокси? Это действие нельзя отменить.",
+    "proxy.confirmDeleteAll":
+      "Удалить все прокси? Это действие нельзя отменить.",
     "proxy.checkResult": "Всего: {total} | Живых: {alive} | Мёртвых: {dead}",
     "proxy.removeProxy": "Убрать прокси",
     "proxy.reassignProxy": "Переназначить прокси",
@@ -262,6 +273,15 @@ const translations: Translations = {
     "tools.checkBans": "Проверять баны",
     "tools.maxThreads": "Макс. потоков:",
     "tools.autoRevalidateBrowser": "Автовалидация при мёртвых куках (браузер)",
+    "tools.autoProxyOnImport": "Авто-назначение прокси при импорте",
+    "tools.autoValidateOnImport": "Авто-валидация при импорте",
+    "tools.importSettings": "Настройки импорта",
+    "tools.autoProxyOnImportDesc": "Авто-назначить прокси сразу после импорта",
+    "tools.autoValidateOnImportDesc":
+      "Авто-валидировать аккаунты сразу после импорта",
+    "tools.importTabMafile": "Mafile",
+    "tools.importTabLogpass": "Log:Pass",
+    "tools.importTabToken": "Token",
     "tools.clickCopy": "Клик для копирования",
     "tools.genErrorStr": "Ошибка",
     // -- Logs panel --
@@ -293,7 +313,8 @@ const translations: Translations = {
     "mafile.clearBtn": "Очистить",
     "mafile.insert": "Вставить {value}",
     "mafile.emptyTitle": "Нет выбранных аккаунтов",
-    "mafile.emptyHint": "Выберите аккаунты в таблице и отправьте сюда для экспорта mafile",
+    "mafile.emptyHint":
+      "Выберите аккаунты в таблице и отправьте сюда для экспорта mafile",
     "mafile.accountsCount": "акк.",
     "mafile.withMafile": "с mafile",
     "mafile.namingSection": "Шаблоны имён",
@@ -305,9 +326,12 @@ const translations: Translations = {
     "settings.hidePasswords": "Скрывать пароли (спойлер)",
     // -- Token disclaimer --
     "token.disclaimerTitle": "Вкладка в разработке",
-    "token.disclaimerBody1": "Функциональность вкладки Token <strong>не завершена</strong> и находится в стадии разработки.",
-    "token.disclaimerBody2": "⚠ Валидация токенов может привести к их инвалидации (убить токены). Используйте на свой страх и риск.",
-    "token.disclaimerBody3": "Импорт, редактирование и любые действия с токенами могут работать некорректно.",
+    "token.disclaimerBody1":
+      "Функциональность вкладки Token <strong>не завершена</strong> и находится в стадии разработки.",
+    "token.disclaimerBody2":
+      "⚠ Валидация токенов может привести к их инвалидации (убить токены). Используйте на свой страх и риск.",
+    "token.disclaimerBody3":
+      "Импорт, редактирование и любые действия с токенами могут работать некорректно.",
     "token.acceptRisk": "Я понимаю риски и хочу продолжить",
     // -- 2FA --
     "twofa.copied": "2FA: {code} (скопировано)",
@@ -377,7 +401,8 @@ const translations: Translations = {
     "prompt.newPassword": "Enter new password",
     "prompt.newEmail": "Enter new email",
     "prompt.newPhone": "Enter new phone number",
-    "prompt.removePhone": "Enter phone number (old number will be transferred to it)",
+    "prompt.removePhone":
+      "Enter phone number (old number will be transferred to it)",
     "prompt.enterValue": "Enter value...",
     // -- Confirm dialogs --
     "confirm.removeGuard": "Remove Steam Guard for this account?",
@@ -418,6 +443,7 @@ const translations: Translations = {
     "btn.clearProxies": "Clear proxies",
     "btn.validate": "Validate",
     "btn.fullParse": "Full parse",
+    "btn.fullCheck": "Full Check",
     "btn.generate": "Generate",
     // -- Toast messages --
     "toast.copied": "Copied",
@@ -557,6 +583,15 @@ const translations: Translations = {
     "tools.checkBans": "Check bans",
     "tools.maxThreads": "Max threads:",
     "tools.autoRevalidateBrowser": "Auto-revalidate on dead cookies (browser)",
+    "tools.autoProxyOnImport": "Auto-assign proxies on import",
+    "tools.autoValidateOnImport": "Auto-validate on import",
+    "tools.importSettings": "Import Settings",
+    "tools.autoProxyOnImportDesc": "Auto-assign proxies right after import",
+    "tools.autoValidateOnImportDesc":
+      "Auto-validate accounts right after import",
+    "tools.importTabMafile": "Mafile",
+    "tools.importTabLogpass": "Log:Pass",
+    "tools.importTabToken": "Token",
     "tools.clickCopy": "Click to copy",
     "tools.genErrorStr": "Error",
     // -- Logs panel --
@@ -588,7 +623,8 @@ const translations: Translations = {
     "mafile.clearBtn": "Clear",
     "mafile.insert": "Insert {value}",
     "mafile.emptyTitle": "No accounts selected",
-    "mafile.emptyHint": "Select accounts in the table and send them here for mafile export",
+    "mafile.emptyHint":
+      "Select accounts in the table and send them here for mafile export",
     "mafile.accountsCount": "accs",
     "mafile.withMafile": "with mafile",
     "mafile.namingSection": "Naming templates",
@@ -600,9 +636,12 @@ const translations: Translations = {
     "settings.hidePasswords": "Hide passwords (spoiler)",
     // -- Token disclaimer --
     "token.disclaimerTitle": "Tab under development",
-    "token.disclaimerBody1": "Token tab functionality is <strong>not complete</strong> and is under development.",
-    "token.disclaimerBody2": "⚠ Token validation may invalidate (kill) tokens. Use at your own risk.",
-    "token.disclaimerBody3": "Import, editing and any actions with tokens may work incorrectly.",
+    "token.disclaimerBody1":
+      "Token tab functionality is <strong>not complete</strong> and is under development.",
+    "token.disclaimerBody2":
+      "⚠ Token validation may invalidate (kill) tokens. Use at your own risk.",
+    "token.disclaimerBody3":
+      "Import, editing and any actions with tokens may work incorrectly.",
     "token.acceptRisk": "I understand the risks and want to continue",
     // -- 2FA --
     "twofa.copied": "2FA: {code} (copied)",
@@ -620,7 +659,10 @@ const translations: Translations = {
   },
 };
 
-export function t(key: string, params?: Record<string, string | number>): string {
+export function t(
+  key: string,
+  params?: Record<string, string | number>,
+): string {
   const dict = translations[_locale] || translations.ru;
   let text = dict[key] ?? translations.ru[key] ?? key;
   if (params) {
@@ -633,7 +675,10 @@ export function t(key: string, params?: Record<string, string | number>): string
 
 export function useT() {
   useSyncExternalStore(
-    (cb) => { _listeners.add(cb); return () => _listeners.delete(cb); },
+    (cb) => {
+      _listeners.add(cb);
+      return () => _listeners.delete(cb);
+    },
     () => _locale,
   );
   return t;

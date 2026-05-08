@@ -6,17 +6,45 @@ import { AccountRow } from "./AccountRow";
 import { useT } from "@/lib/i18n";
 
 const COLUMN_KEYS: (keyof ColumnSettings)[] = [
-  "browser", "profile", "last_online", "steam_id", "login", "password", "login_pass",
-  "email", "email_pass", "email_login_pass", "phone", "status", "ban", "twofa", "mafile", "proxy", "notes", "actions",
+  "browser",
+  "profile",
+  "last_online",
+  "steam_id",
+  "login",
+  "password",
+  "login_pass",
+  "email",
+  "email_pass",
+  "email_login_pass",
+  "phone",
+  "status",
+  "ban",
+  "twofa",
+  "mafile",
+  "proxy",
+  "notes",
+  "actions",
 ];
 
 const COL_LABEL_KEYS: Record<keyof ColumnSettings, string> = {
-  browser: "col.browser", profile: "col.profile", last_online: "col.lastOnline",
-  steam_id: "col.steamId", login: "col.login", password: "col.password",
-  login_pass: "col.loginPass", email: "col.email", email_pass: "col.emailPass",
-  email_login_pass: "col.emailLoginPass", phone: "col.phone", status: "col.status",
-  ban: "col.ban", twofa: "col.twofa", mafile: "col.mafile", proxy: "col.proxy",
-  notes: "col.notes", actions: "col.actions",
+  browser: "col.browser",
+  profile: "col.profile",
+  last_online: "col.lastOnline",
+  steam_id: "col.steamId",
+  login: "col.login",
+  password: "col.password",
+  login_pass: "col.loginPass",
+  email: "col.email",
+  email_pass: "col.emailPass",
+  email_login_pass: "col.emailLoginPass",
+  phone: "col.phone",
+  status: "col.status",
+  ban: "col.ban",
+  twofa: "col.twofa",
+  mafile: "col.mafile",
+  proxy: "col.proxy",
+  notes: "col.notes",
+  actions: "col.actions",
 };
 
 interface Props {
@@ -26,19 +54,47 @@ interface Props {
   accountSteps: Record<string, { step: number; total: number }>;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
-  onAction: (id: number, action: string, params: Record<string, string>) => void;
+  onAction: (
+    id: number,
+    action: string,
+    params: Record<string, string>,
+  ) => void;
   onToggleAutoAccept: (id: number) => void;
   onOpenBrowser: (id: number) => void;
 }
 
-export function AccountTable({ accounts, processingIds, accountResults, accountSteps, onEdit, onDelete, onAction, onToggleAutoAccept, onOpenBrowser }: Props) {
-  const selectAll = useAccountStore((s) => s.selectAll);
-  const clearSelection = useAccountStore((s) => s.clearSelection);
+export function AccountTable({
+  accounts,
+  processingIds,
+  accountResults,
+  accountSteps,
+  onEdit,
+  onDelete,
+  onAction,
+  onToggleAutoAccept,
+  onOpenBrowser,
+}: Props) {
   const selectedIds = useAccountStore((s) => s.selectedIds);
+  const setSelectedIds = useAccountStore((s) => s.setSelectedIds);
   const cols = useUiStore((s) => s.columnVisibility);
   const t = useT();
 
-  const allSelected = accounts.length > 0 && selectedIds.size === accounts.length;
+  const allFilteredSelected =
+    accounts.length > 0 && accounts.every((a) => selectedIds.has(a.id));
+
+  const toggleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      // Deselect only the filtered accounts, keep others selected
+      const next = new Set(selectedIds);
+      accounts.forEach((a) => next.delete(a.id));
+      setSelectedIds(next);
+    } else {
+      // Add all filtered accounts to selection
+      const next = new Set(selectedIds);
+      accounts.forEach((a) => next.add(a.id));
+      setSelectedIds(next);
+    }
+  };
   const visibleKeys = COLUMN_KEYS.filter((k) => cols[k]);
 
   const BATCH = 100;
@@ -52,7 +108,10 @@ export function AccountTable({ accounts, processingIds, accountResults, accountS
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       if (sortDir === "asc") setSortDir("desc");
-      else { setSortField(null); setSortDir("asc"); }
+      else {
+        setSortField(null);
+        setSortDir("asc");
+      }
     } else {
       setSortField(field);
       setSortDir("asc");
@@ -64,7 +123,9 @@ export function AccountTable({ accounts, processingIds, accountResults, accountS
     const dir = sortDir === "asc" ? 1 : -1;
     const EMPTY = Symbol();
     return [...accounts].sort((a, b) => {
-      const parseOnline = (v: string | null | undefined): number | typeof EMPTY => {
+      const parseOnline = (
+        v: string | null | undefined,
+      ): number | typeof EMPTY => {
         if (!v || v === "\u2014") return EMPTY;
         if (v === "online") return -1;
         const m = v.match(/^(\d+)([mhd])$/i);
@@ -84,16 +145,25 @@ export function AccountTable({ accounts, processingIds, accountResults, accountS
     });
   }, [accounts, sortField, sortDir]);
 
-  useEffect(() => { setVisibleCount(BATCH); }, [accounts, sortField, sortDir]);
+  useEffect(() => {
+    setVisibleCount(BATCH);
+  }, [accounts, sortField, sortDir]);
 
-  const visible = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount]);
+  const visible = useMemo(
+    () => sorted.slice(0, visibleCount),
+    [sorted, visibleCount],
+  );
 
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    const obs = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) setVisibleCount((c) => Math.min(c + BATCH, sorted.length));
-    }, { rootMargin: "400px" });
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting)
+          setVisibleCount((c) => Math.min(c + BATCH, sorted.length));
+      },
+      { rootMargin: "400px" },
+    );
     obs.observe(el);
     return () => obs.disconnect();
   }, [sorted.length, visibleCount]);
@@ -135,11 +205,13 @@ export function AccountTable({ accounts, processingIds, accountResults, accountS
               <div className="flex items-center gap-1.5">
                 <input
                   type="checkbox"
-                  checked={allSelected}
-                  onChange={() => allSelected ? clearSelection() : selectAll()}
+                  checked={allFilteredSelected}
+                  onChange={toggleSelectAllFiltered}
                 />
                 {selectedIds.size > 0 && (
-                  <span className="text-accent font-medium">{selectedIds.size}</span>
+                  <span className="text-accent font-medium">
+                    {selectedIds.size}
+                  </span>
                 )}
               </div>
             </th>
@@ -147,12 +219,28 @@ export function AccountTable({ accounts, processingIds, accountResults, accountS
             {visibleKeys.map((k) => {
               if (k === "last_online") {
                 return (
-                  <th key={k} className="px-3 py-2 cursor-pointer select-none hover:text-gray-300" onClick={() => toggleSort("last_online")}>
-                    {t(COL_LABEL_KEYS[k])}{sortField === "last_online" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+                  <th
+                    key={k}
+                    className="px-3 py-2 cursor-pointer select-none hover:text-gray-300"
+                    onClick={() => toggleSort("last_online")}
+                  >
+                    {t(COL_LABEL_KEYS[k])}
+                    {sortField === "last_online"
+                      ? sortDir === "asc"
+                        ? " ▲"
+                        : " ▼"
+                      : ""}
                   </th>
                 );
               }
-              return <th key={k} className={`px-3 py-2${k === "browser" ? " text-center" : ""}`}>{t(COL_LABEL_KEYS[k])}</th>;
+              return (
+                <th
+                  key={k}
+                  className={`px-3 py-2${k === "browser" ? " text-center" : ""}`}
+                >
+                  {t(COL_LABEL_KEYS[k])}
+                </th>
+              );
             })}
           </tr>
         </thead>
@@ -174,7 +262,17 @@ export function AccountTable({ accounts, processingIds, accountResults, accountS
             />
           ))}
           {visibleCount < accounts.length && (
-            <tr ref={sentinelRef}><td colSpan={visibleKeys.length + 2} className="text-center py-3 text-xs text-gray-500">{t("paging.shown", { visible: visibleCount, total: accounts.length })}</td></tr>
+            <tr ref={sentinelRef}>
+              <td
+                colSpan={visibleKeys.length + 2}
+                className="text-center py-3 text-xs text-gray-500"
+              >
+                {t("paging.shown", {
+                  visible: visibleCount,
+                  total: accounts.length,
+                })}
+              </td>
+            </tr>
           )}
         </tbody>
       </table>

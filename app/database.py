@@ -1,9 +1,9 @@
+import asyncio
+
 import aiosqlite
 from loguru import logger
 
 from app.config import settings
-
-import asyncio
 
 _db: aiosqlite.Connection | None = None
 _db_lock = asyncio.Lock()
@@ -124,7 +124,10 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         ("nickname", "ALTER TABLE accounts ADD COLUMN nickname TEXT"),
         ("avatar_url", "ALTER TABLE accounts ADD COLUMN avatar_url TEXT"),
         ("steam_level", "ALTER TABLE accounts ADD COLUMN steam_level INTEGER"),
-        ("auto_accept", "ALTER TABLE accounts ADD COLUMN auto_accept INTEGER NOT NULL DEFAULT 0"),
+        (
+            "auto_accept",
+            "ALTER TABLE accounts ADD COLUMN auto_accept INTEGER NOT NULL DEFAULT 0",
+        ),
         ("ban_status", "ALTER TABLE accounts ADD COLUMN ban_status TEXT"),
         ("session_cookies", "ALTER TABLE accounts ADD COLUMN session_cookies TEXT"),
         ("last_online", "ALTER TABLE accounts ADD COLUMN last_online TEXT"),
@@ -153,7 +156,10 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         ("trophy", "ALTER TABLE logpass_accounts ADD COLUMN trophy TEXT"),
         ("behavior", "ALTER TABLE logpass_accounts ADD COLUMN behavior TEXT"),
         ("license", "ALTER TABLE logpass_accounts ADD COLUMN license TEXT"),
-        ("session_cookies", "ALTER TABLE logpass_accounts ADD COLUMN session_cookies TEXT"),
+        (
+            "session_cookies",
+            "ALTER TABLE logpass_accounts ADD COLUMN session_cookies TEXT",
+        ),
         ("steam_level", "ALTER TABLE logpass_accounts ADD COLUMN steam_level INTEGER"),
         ("avatar_url", "ALTER TABLE logpass_accounts ADD COLUMN avatar_url TEXT"),
         ("last_online", "ALTER TABLE logpass_accounts ADD COLUMN last_online TEXT"),
@@ -168,12 +174,16 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     tk_cols = {row[1] for row in await cursor.fetchall()}
     tk_migrations = [
         ("proxy", "ALTER TABLE token_accounts ADD COLUMN proxy TEXT"),
-        ("session_cookies", "ALTER TABLE token_accounts ADD COLUMN session_cookies TEXT"),
+        (
+            "session_cookies",
+            "ALTER TABLE token_accounts ADD COLUMN session_cookies TEXT",
+        ),
         ("ban_status", "ALTER TABLE token_accounts ADD COLUMN ban_status TEXT"),
         ("nickname", "ALTER TABLE token_accounts ADD COLUMN nickname TEXT"),
         ("steam_level", "ALTER TABLE token_accounts ADD COLUMN steam_level INTEGER"),
         ("avatar_url", "ALTER TABLE token_accounts ADD COLUMN avatar_url TEXT"),
         ("last_online", "ALTER TABLE token_accounts ADD COLUMN last_online TEXT"),
+        ("check_data", "ALTER TABLE token_accounts ADD COLUMN check_data TEXT"),
     ]
     for col, sql in tk_migrations:
         if col not in tk_cols:
@@ -186,10 +196,14 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     idx_names = {row[1] for row in idx_rows}
     if "uq_logpass_login" not in idx_names:
         try:
-            await db.execute("CREATE UNIQUE INDEX uq_logpass_login ON logpass_accounts(login)")
+            await db.execute(
+                "CREATE UNIQUE INDEX uq_logpass_login ON logpass_accounts(login)"
+            )
             logger.info("Migration: added unique index on logpass_accounts.login")
         except Exception:
-            logger.warning("Could not create unique index on logpass_accounts.login (duplicates may exist)")
+            logger.warning(
+                "Could not create unique index on logpass_accounts.login (duplicates may exist)"
+            )
 
 
 async def close_db() -> None:

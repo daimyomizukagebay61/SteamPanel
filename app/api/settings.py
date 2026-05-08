@@ -16,6 +16,14 @@ DEFAULTS = {
         "check_ban": True,
         "max_threads": 5,
         "auto_revalidate_browser": True,
+        "auto_proxy_on_import": False,
+        "auto_validate_on_import": False,
+        "auto_proxy_on_import_mafile": True,
+        "auto_proxy_on_import_logpass": True,
+        "auto_proxy_on_import_token": True,
+        "auto_validate_on_import_mafile": True,
+        "auto_validate_on_import_logpass": True,
+        "auto_validate_on_import_token": True,
     },
     "display": {
         "hide_passwords": False,
@@ -84,6 +92,14 @@ class ValidationSettings(BaseModel):
     check_ban: bool = True
     max_threads: int = 5
     auto_revalidate_browser: bool = True
+    auto_proxy_on_import: bool = False
+    auto_validate_on_import: bool = False
+    auto_proxy_on_import_mafile: bool = True
+    auto_proxy_on_import_logpass: bool = True
+    auto_proxy_on_import_token: bool = True
+    auto_validate_on_import_mafile: bool = True
+    auto_validate_on_import_logpass: bool = True
+    auto_validate_on_import_token: bool = True
 
 
 class DisplaySettings(BaseModel):

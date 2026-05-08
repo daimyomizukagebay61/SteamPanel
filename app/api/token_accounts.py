@@ -3,10 +3,11 @@
 import asyncio
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from loguru import logger
 
-from app.database import get_db
 from app.core.task_manager import task_manager
+from app.database import get_db
 from app.models import TokenAccountCreate, TokenAccountOut, TokenAccountUpdate
 
 router = APIRouter(prefix="/api/token-accounts", tags=["token-accounts"])
@@ -23,7 +24,9 @@ async def list_tokens():
 @router.get("/{account_id}", response_model=TokenAccountOut)
 async def get_token(account_id: int):
     db = await get_db()
-    cursor = await db.execute("SELECT * FROM token_accounts WHERE id = ?", (account_id,))
+    cursor = await db.execute(
+        "SELECT * FROM token_accounts WHERE id = ?", (account_id,)
+    )
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -52,14 +55,15 @@ async def update_token(account_id: int, account: TokenAccountUpdate):
         raise HTTPException(status_code=400, detail="No fields to update")
     fields["updated_at"] = "datetime('now')"
     set_clause = ", ".join(
-        f"{k} = datetime('now')" if k == "updated_at" else f"{k} = ?"
-        for k in fields
+        f"{k} = datetime('now')" if k == "updated_at" else f"{k} = ?" for k in fields
     )
     values = [v for k, v in fields.items() if k != "updated_at"]
     values.append(account_id)
     await db.execute(f"UPDATE token_accounts SET {set_clause} WHERE id = ?", values)
     await db.commit()
-    cursor = await db.execute("SELECT * FROM token_accounts WHERE id = ?", (account_id,))
+    cursor = await db.execute(
+        "SELECT * FROM token_accounts WHERE id = ?", (account_id,)
+    )
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -140,7 +144,9 @@ async def validate_tokens(data: dict):
         accounts=accounts,
         params={},
     )
-    logger.info(f"token_validate submitted for {len(accounts)} accounts → task {task_id}")
+    logger.info(
+        f"token_validate submitted for {len(accounts)} accounts → task {task_id}"
+    )
     return {"task_id": task_id, "accounts_count": len(accounts)}
 
 
@@ -148,17 +154,21 @@ async def validate_tokens(data: dict):
 async def open_token_browser(account_id: int):
     """Open Chrome browser with saved session cookies for a token account."""
     db = await get_db()
-    cursor = await db.execute("SELECT * FROM token_accounts WHERE id = ?", (account_id,))
+    cursor = await db.execute(
+        "SELECT * FROM token_accounts WHERE id = ?", (account_id,)
+    )
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Account not found")
 
     account = dict(row)
     if not account.get("session_cookies"):
-        raise HTTPException(status_code=400, detail="No session cookies. Validate the account first.")
+        raise HTTPException(
+            status_code=400, detail="No session cookies. Validate the account first."
+        )
 
-    from app.services.steam_auth import check_cookies_alive, _resolve_proxy
     from app.config import read_validation_settings
+    from app.services.steam_auth import _resolve_proxy, check_cookies_alive
 
     proxy = await _resolve_proxy(account)
     alive = await check_cookies_alive(account["session_cookies"], proxy)
@@ -170,9 +180,17 @@ async def open_token_browser(account_id: int):
                 accounts=[account],
                 params={},
             )
-            logger.info(f"Cookies dead for token account {account_id}, auto-revalidating → task {task_id}")
-            return {"status": "revalidating", "message": "Cookies expired. Re-validating...", "task_id": task_id}
-        raise HTTPException(status_code=400, detail="Session cookies expired. Re-validate the account.")
+            logger.info(
+                f"Cookies dead for token account {account_id}, auto-revalidating → task {task_id}"
+            )
+            return {
+                "status": "revalidating",
+                "message": "Cookies expired. Re-validating...",
+                "task_id": task_id,
+            }
+        raise HTTPException(
+            status_code=400, detail="Session cookies expired. Re-validate the account."
+        )
 
     from app.services.browser_login import open_browser_with_cookies
 
@@ -180,10 +198,83 @@ async def open_token_browser(account_id: int):
         try:
             await open_browser_with_cookies(account)
         except Exception as exc:
-            logger.error(f"Browser open failed for {account.get('login', account_id)}: {exc}")
+            logger.error(
+                f"Browser open failed for {account.get('login', account_id)}: {exc}"
+            )
 
     asyncio.create_task(_run())
     return {"status": "ok", "message": "Browser opening..."}
+
+
+@router.post("/full-check")
+async def full_check_tokens(data: dict):
+    """Submit a full-check task for selected token accounts."""
+    ids: list[int] = data.get("account_ids", [])
+    if not ids:
+        raise HTTPException(status_code=400, detail="No account IDs provided")
+    db = await get_db()
+    placeholders = ",".join("?" for _ in ids)
+    cursor = await db.execute(
+        f"SELECT * FROM token_accounts WHERE id IN ({placeholders})", ids
+    )
+    accounts = [dict(r) for r in await cursor.fetchall()]
+    if not accounts:
+        raise HTTPException(status_code=404, detail="No accounts found")
+    task_id = await task_manager.submit(
+        task_type="token_full_check",
+        accounts=accounts,
+        params={},
+    )
+    logger.info(
+        f"token_full_check submitted for {len(accounts)} accounts → task {task_id}"
+    )
+    return {"task_id": task_id, "accounts_count": len(accounts)}
+
+
+@router.get("/{account_id}/check-data")
+async def get_token_check_data(account_id: int):
+    """Return stored check_data JSON for a token account."""
+    import json
+
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT check_data FROM token_accounts WHERE id = ?", (account_id,)
+    )
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Account not found")
+    check_data_str = row["check_data"]
+    if not check_data_str:
+        raise HTTPException(
+            status_code=404,
+            detail="No check data available. Run a full check first.",
+        )
+    return json.loads(check_data_str)
+
+
+@router.get("/{account_id}/cookies")
+async def download_token_cookies(account_id: int):
+    """Download session_cookies as a .json file."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT login, steam_id, session_cookies FROM token_accounts WHERE id = ?",
+        (account_id,),
+    )
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Account not found")
+    cookies = row["session_cookies"]
+    if not cookies:
+        raise HTTPException(
+            status_code=404, detail="No cookies saved. Validate the account first."
+        )
+    login = row["login"] or row["steam_id"] or str(account_id)
+    filename = f"{login}_cookies.json"
+    return Response(
+        content=cookies,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/assign-proxies")

@@ -11,6 +11,7 @@ interface LogpassState {
   toggleSelect: (id: number) => void;
   selectAll: () => void;
   clearSelection: () => void;
+  setSelectedIds: (ids: Set<number>) => void;
 }
 
 export const useLogpassStore = create<LogpassState>((set) => ({
@@ -40,4 +41,5 @@ export const useLogpassStore = create<LogpassState>((set) => ({
     set((s) => ({ selectedIds: new Set(s.accounts.map((a) => a.id)) })),
 
   clearSelection: () => set({ selectedIds: new Set() }),
+  setSelectedIds: (ids) => set({ selectedIds: ids }),
 }));

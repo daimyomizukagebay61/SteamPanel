@@ -3,31 +3,43 @@ import socket
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from loguru import logger
+
+from app.api import (
+    accounts,
+    actions,
+    auto_accept,
+    browser,
+    logpass,
+    logs,
+    mafile_tools,
+    proxies,
+    tasks,
+    token_accounts,
+)
+from app.api import settings as settings_api
+from app.config import settings
+from app.core.auto_accept import auto_accept_manager
+from app.core.logging import setup_logging
+from app.core.proxy_manager import proxy_manager
+from app.database import close_db, get_db
+from app.services.registry import register_all_handlers
 
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("image/svg+xml", ".svg")
-from loguru import logger
 
-VERSION = "0.3.4"
 
-from app.config import settings
-from app.core.logging import setup_logging
-from app.database import get_db, close_db
-from app.core.proxy_manager import proxy_manager
-from app.core.auto_accept import auto_accept_manager
-from app.services.registry import register_all_handlers
-from app.api import accounts, actions, proxies, tasks, mafile_tools, logs, auto_accept, browser
-from app.api import settings as settings_api
-from app.api import logpass, token_accounts
+VERSION = "0.3.5"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
     from app.api.logs import install_log_sink
+
     install_log_sink()
     db = await get_db()
 
@@ -73,6 +85,7 @@ app = FastAPI(
 async def get_version():
     return {"version": VERSION}
 
+
 app.include_router(accounts.router)
 app.include_router(actions.router)
 app.include_router(proxies.router)
@@ -90,6 +103,7 @@ static_dir.mkdir(parents=True, exist_ok=True)
 
 _MIME = {".js": "application/javascript", ".css": "text/css", ".svg": "image/svg+xml"}
 
+
 @app.get("/", include_in_schema=False)
 async def serve_root():
     return FileResponse(
@@ -97,16 +111,22 @@ async def serve_root():
         headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
     )
 
+
 @app.get("/assets/{filename:path}", include_in_schema=False)
 async def serve_asset(filename: str):
     from fastapi import HTTPException
+
     file_path = static_dir / "assets" / filename
     if not file_path.exists():
         raise HTTPException(status_code=404)
     ext = "." + filename.rsplit(".", 1)[-1] if "." in filename else ""
     media_type = _MIME.get(ext, "application/octet-stream")
-    return FileResponse(str(file_path), media_type=media_type,
-                        headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    return FileResponse(
+        str(file_path),
+        media_type=media_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
+
 
 app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
@@ -128,6 +148,7 @@ if __name__ == "__main__":
     import threading
     import time
     import webbrowser
+
     import uvicorn
 
     # Install log intercept before uvicorn.run() so the first two startup

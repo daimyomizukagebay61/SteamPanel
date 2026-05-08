@@ -7,9 +7,10 @@ import { useT } from "@/lib/i18n";
 
 interface Props {
   onClose: () => void;
+  onImportDone?: (newIds: number[]) => void;
 }
 
-export function ImportModal({ onClose }: Props) {
+export function ImportModal({ onClose, onImportDone }: Props) {
   const t = useT();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<string>("");
@@ -28,10 +29,23 @@ export function ImportModal({ onClose }: Props) {
     if (!file) return;
     setUploading(true);
     try {
+      const idsBefore = new Set(
+        useAccountStore.getState().accounts.map((a) => a.id),
+      );
       const res = await api.importAccounts(file);
-      setResult(t("toast.importResult", { imported: res.imported, skipped: res.skipped }));
+      setResult(
+        t("toast.importResult", {
+          imported: res.imported,
+          skipped: res.skipped,
+        }),
+      );
       addToast("success", `${res.imported} ok, ${res.skipped} skip`);
       await loadAccounts();
+      const newIds = useAccountStore
+        .getState()
+        .accounts.map((a) => a.id)
+        .filter((id) => !idsBefore.has(id));
+      onImportDone?.(newIds);
     } catch (e: unknown) {
       setResult(e instanceof Error ? e.message : t("misc.errorStr"));
     } finally {
@@ -41,13 +55,30 @@ export function ImportModal({ onClose }: Props) {
 
   return (
     <div className="confirm-overlay" onMouseDown={onClose}>
-      <div className="confirm-box max-w-lg w-full" onMouseDown={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold mb-4">{t("modal.importAccounts")}</h3>
+      <div
+        className="confirm-box max-w-lg w-full"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold mb-4">
+          {t("modal.importAccounts")}
+        </h3>
         <div className="text-sm text-gray-400 mb-3 space-y-1">
-          <p className="font-medium text-gray-300">{t("import.formats")} <span className="text-gray-500 font-normal">({t("import.delimiter")} <code className="text-accent">:</code> {t("import.or")} <code className="text-accent">|</code>)</span></p>
-          <p className="font-mono text-xs">login:pass:{"{"}mafile{"}"}</p>
-          <p className="font-mono text-xs">login:pass:email:email_pass:{"{"}mafile{"}"}</p>
-          <p className="font-mono text-xs">login:pass:email:email_pass:{"{"}mafile{"}"}:notes</p>
+          <p className="font-medium text-gray-300">
+            {t("import.formats")}{" "}
+            <span className="text-gray-500 font-normal">
+              ({t("import.delimiter")} <code className="text-accent">:</code>{" "}
+              {t("import.or")} <code className="text-accent">|</code>)
+            </span>
+          </p>
+          <p className="font-mono text-xs">
+            login:pass:{"{"}mafile{"}"}
+          </p>
+          <p className="font-mono text-xs">
+            login:pass:email:email_pass:{"{"}mafile{"}"}
+          </p>
+          <p className="font-mono text-xs">
+            login:pass:email:email_pass:{"{"}mafile{"}"}:notes
+          </p>
           <p className="font-mono text-xs">login:pass:email:email_pass</p>
           <p className="font-mono text-xs">login:pass:email:email_pass:notes</p>
         </div>
@@ -59,14 +90,26 @@ export function ImportModal({ onClose }: Props) {
         >
           <IconUpload size={32} className="mx-auto mb-2 text-gray-500" />
           <p className="text-sm text-gray-400">
-            {file ? t("import.selected", { name: file.name }) : t("import.dragTxt")}
+            {file
+              ? t("import.selected", { name: file.name })
+              : t("import.dragTxt")}
           </p>
         </div>
-        <input ref={inputRef} type="file" accept=".txt" className="hidden" onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) setFile(f);
-        }} />
-        <button onClick={doImport} disabled={!file || uploading} className="btn-primary w-full">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".txt"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) setFile(f);
+          }}
+        />
+        <button
+          onClick={doImport}
+          disabled={!file || uploading}
+          className="btn-primary w-full"
+        >
           {uploading ? t("import.uploading") : t("import.importBtn")}
         </button>
         {result && <p className="mt-3 text-sm text-gray-300">{result}</p>}

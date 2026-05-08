@@ -12,12 +12,16 @@ export default function App() {
   const activeTab = useUiStore((s) => s.activeTab);
   const loadDisplaySettings = useUiStore((s) => s.loadDisplaySettings);
   const loadColumnSettings = useUiStore((s) => s.loadColumnSettings);
-  const loadLogpassColumnSettings = useUiStore((s) => s.loadLogpassColumnSettings);
+  const loadLogpassColumnSettings = useUiStore(
+    (s) => s.loadLogpassColumnSettings,
+  );
+  const loadImportSettings = useUiStore((s) => s.loadImportSettings);
 
   useEffect(() => {
     loadDisplaySettings();
     loadColumnSettings();
     loadLogpassColumnSettings();
+    loadImportSettings();
   }, []);
 
   return (
