@@ -21,6 +21,7 @@ frontend/node_modules/
 
 # User data — DB, mafiles, logs, settings
 data/
+data_backup/
 
 # IDE / tools
 .github/
