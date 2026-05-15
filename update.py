@@ -65,7 +65,11 @@ def rebuild_frontend():
     frontend = ROOT / "frontend"
     if not frontend.exists():
         return
-    if subprocess.run(["npm", "--version"], capture_output=True).returncode != 0:
+    try:
+        node_ok = subprocess.run(["npm", "--version"], capture_output=True).returncode == 0
+    except FileNotFoundError:
+        node_ok = False
+    if not node_ok:
         print("[!] Node.js not found — skipping frontend rebuild.")
         print("    If UI looks broken: cd frontend && npm install && npm run build")
         return
@@ -97,7 +101,11 @@ def download(url, dest):
 # ── git update path ───────────────────────────────────────────────────────────
 
 def update_via_git():
-    if subprocess.run(["git", "--version"], capture_output=True).returncode != 0:
+    try:
+        git_ok = subprocess.run(["git", "--version"], capture_output=True).returncode == 0
+    except FileNotFoundError:
+        git_ok = False
+    if not git_ok:
         print("[!] git not found. Install Git from https://git-scm.com")
         return
 
