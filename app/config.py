@@ -17,10 +17,15 @@ class Settings(BaseSettings):
     proxies_path: Path = data_dir / "proxies.json"
 
     max_concurrent_tasks: int = 5
-    request_timeout: int = 30
+    request_timeout: int = 30000  # milliseconds
     proxy_rotation_interval: int = 60
 
-    model_config = {"env_prefix": "STEAM_PANEL_"}
+    model_config = {
+        "env_prefix": "STEAM_PANEL_",
+        "env_file": Path(__file__).resolve().parent.parent / ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 settings = Settings()

@@ -53,6 +53,7 @@ function ThreadStepper({
   value: number;
   onChange: (v: number) => void;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +73,7 @@ function ThreadStepper({
         className="text-sm text-gray-400 flex-1"
         title="Двойной клик на числе для ручного ввода"
       >
-        Max threads
+        {t("tools.maxThreads")}
       </span>
       <div className="flex items-center gap-1">
         <button

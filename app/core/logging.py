@@ -6,30 +6,29 @@ from loguru import logger
 
 from app.config import settings
 
-
 LEVEL_ICONS = {
-    "TRACE":   "[~]",
-    "DEBUG":   "[.]",
-    "INFO":    "[i]",
+    "TRACE": "[~]",
+    "DEBUG": "[.]",
+    "INFO": "[i]",
     "SUCCESS": "[+]",
     "WARNING": "[!]",
-    "ERROR":   "[e]",
-    "CRITICAL":"[e]",
+    "ERROR": "[e]",
+    "CRITICAL": "[e]",
 }
 
 LEVEL_COLORS = {
-    "TRACE":   "\033[35m",
-    "DEBUG":   "\033[37m",
-    "INFO":    "\033[34m",
+    "TRACE": "\033[35m",
+    "DEBUG": "\033[37m",
+    "INFO": "\033[34m",
     "SUCCESS": "\033[32m",
     "WARNING": "\033[33m",
-    "ERROR":   "\033[31m",
-    "CRITICAL":"\033[31m",
+    "ERROR": "\033[31m",
+    "CRITICAL": "\033[31m",
 }
 RESET = "\033[0m"
 
 
-def _loguru_fmt(record: dict) -> str:
+def _loguru_fmt(record) -> str:  # type: ignore[override]
     level = record["level"].name
     icon = LEVEL_ICONS.get(level, "[i]")
     color = LEVEL_COLORS.get(level, "")
@@ -52,7 +51,9 @@ class _UvicornInterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
 
 
 _logging_configured = False
@@ -75,11 +76,13 @@ def setup_logging() -> None:
 
     settings.logs_dir.mkdir(parents=True, exist_ok=True)
 
-    def _file_fmt(record: dict) -> str:
+    def _file_fmt(record) -> str:  # type: ignore[override]
         level = record["level"].name
         icon = LEVEL_ICONS.get(level, "[i]")
         ts = record["time"].strftime("%Y-%m-%d %H:%M:%S")
-        msg = record["message"].replace("<", "\\<").replace("{", "{{").replace("}", "}}")
+        msg = (
+            record["message"].replace("<", "\\<").replace("{", "{{").replace("}", "}}")
+        )
         return f"[{ts}] {icon} {msg}\n"
 
     logger.add(
@@ -133,6 +136,3 @@ def _install_intercept() -> None:
     aiosqlite_log.addFilter(_AioSQLiteFilter())
 
     logging.getLogger("asyncio").setLevel(logging.WARNING)
-
-
-

@@ -26,13 +26,11 @@ from app.core.logging import setup_logging
 from app.core.proxy_manager import proxy_manager
 from app.database import close_db, get_db
 from app.services.registry import register_all_handlers
+from version import VERSION
 
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("image/svg+xml", ".svg")
-
-
-VERSION = "0.3.5"
 
 
 @asynccontextmanager

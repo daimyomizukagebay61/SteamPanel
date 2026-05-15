@@ -23,9 +23,9 @@ function Row({
 }) {
   return (
     <div className="flex text-[11px] font-mono leading-[1.7]">
-      <span className="w-[110px] shrink-0 text-gray-500">{label}</span>
+      <span className="w-27.5 shrink-0 text-gray-500">{label}</span>
       <span
-        className={`min-w-0 break-words ${
+        className={`min-w-0 wrap-break-word ${
           good ? "text-green-400" : bad ? "text-red-400" : "text-gray-200"
         }`}
       >
@@ -116,7 +116,7 @@ export function TokenCheckModal({ account, onClose, onRecheck }: Props) {
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
       onClick={handleBackdrop}
     >
-      <div className="bg-dark-800 border border-dark-600 rounded-xl w-full max-w-[640px] max-h-[85vh] flex flex-col shadow-2xl mx-4">
+      <div className="bg-dark-800 border border-dark-600 rounded-xl w-full max-w-160 max-h-[85vh] flex flex-col shadow-2xl mx-4">
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-dark-600 flex items-start justify-between shrink-0">
           <div className="flex items-start gap-3 min-w-0">
@@ -274,22 +274,41 @@ export function TokenCheckModal({ account, onClose, onRecheck }: Props) {
 
               {/* Inventory */}
               <Card title="Inventory">
-                <Row
-                  label="CS2"
-                  value={`${data.inventory_cs2} (${data.inventory_cs2_marketable})`}
-                />
-                <Row
-                  label="Dota 2"
-                  value={`${data.inventory_dota2} (${data.inventory_dota2_marketable})`}
-                />
-                <Row
-                  label="TF2"
-                  value={`${data.inventory_tf2} (${data.inventory_tf2_marketable})`}
-                />
-                <Row
-                  label="Rust"
-                  value={`${data.inventory_rust} (${data.inventory_rust_marketable})`}
-                />
+                {[
+                  {
+                    label: "CS2",
+                    total: data.inventory_cs2,
+                    market: data.inventory_cs2_marketable,
+                  },
+                  {
+                    label: "Dota 2",
+                    total: data.inventory_dota2,
+                    market: data.inventory_dota2_marketable,
+                  },
+                  {
+                    label: "TF2",
+                    total: data.inventory_tf2,
+                    market: data.inventory_tf2_marketable,
+                  },
+                  {
+                    label: "Rust",
+                    total: data.inventory_rust,
+                    market: data.inventory_rust_marketable,
+                  },
+                ].map(({ label, total, market }) => (
+                  <div
+                    key={label}
+                    className="flex text-[11px] font-mono leading-[1.7]"
+                  >
+                    <span className="w-27.5 shrink-0 text-gray-500">
+                      {label}
+                    </span>
+                    <span className="text-gray-200">
+                      {total}
+                      <span className="text-gray-600"> ({market})</span>
+                    </span>
+                  </div>
+                ))}
               </Card>
             </div>
           )}
