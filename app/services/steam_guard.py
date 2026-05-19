@@ -11,7 +11,10 @@ def generate_2fa_code(shared_secret: str) -> str:
     """Generate a Steam Guard 2FA code from shared_secret."""
     timestamp = int(time.time()) // 30
     msg = struct.pack(">Q", timestamp)
-    key = base64.b64decode(shared_secret)
+    # Normalise: accept both standard (+/) and URL-safe (-_) base64, fix padding
+    normalised = shared_secret.strip().replace("-", "+").replace("_", "/")
+    normalised += "=" * (-len(normalised) % 4)
+    key = base64.b64decode(normalised)
     auth = hmac.new(key, msg, hashlib.sha1).digest()
 
     offset = auth[19] & 0xF

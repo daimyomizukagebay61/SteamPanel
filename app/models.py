@@ -47,7 +47,13 @@ class AccountOut(BaseModel):
     steam_level: int | None = None
     last_online: str | None = None
     auto_accept: int = 0
+    auto_confirm: int = 0
     ban_status: str | None = None
+    vac_status: str | None = None
+    limit_status: str | None = None
+    vac_games: str | None = None
+    balance: str | None = None
+    country: str | None = None
     has_cookies: bool = False
     has_revocation_code: bool = False
     created_at: str
@@ -183,6 +189,11 @@ class LogpassAccountOut(BaseModel):
     proxy: str | None = None
     status: str
     ban_status: str | None = None
+    vac_status: str | None = None
+    limit_status: str | None = None
+    vac_games: str | None = None
+    balance: str | None = None
+    country: str | None = None
     nickname: str | None = None
     steam_level: int | None = None
     prime: str | None = None
@@ -233,6 +244,11 @@ class TokenAccountOut(BaseModel):
     proxy: str | None = None
     status: str
     ban_status: str | None = None
+    vac_status: str | None = None
+    limit_status: str | None = None
+    vac_games: str | None = None
+    balance: str | None = None
+    country: str | None = None
     nickname: str | None = None
     steam_level: int | None = None
     avatar_url: str | None = None

@@ -31,7 +31,7 @@ async def check_token_account(account: dict, params: dict, *, task_id: str) -> N
     token = account["token"]
 
     # Step 1: Decode JWT to get steam_id
-    await task_manager.set_step(task_id, 1, 4, "Декодирование токена", acc_id)
+    await task_manager.set_step(task_id, 1, 5, "Декодирование токена", acc_id)
     try:
         jwt_payload = _decode_jwt_payload(token)
     except Exception as exc:
@@ -42,7 +42,7 @@ async def check_token_account(account: dict, params: dict, *, task_id: str) -> N
     steam_id = jwt_payload.get("sub")
 
     # Step 2: GET steamcommunity.com for sessionid cookie
-    await task_manager.set_step(task_id, 2, 4, "Получение sessionid", acc_id)
+    await task_manager.set_step(task_id, 2, 5, "Получение sessionid", acc_id)
     proxy = await _resolve_proxy(account)
     connector = proxy_manager.get_connector(proxy) if proxy else aiohttp.TCPConnector()
     jar = aiohttp.CookieJar(unsafe=True)
@@ -68,7 +68,7 @@ async def check_token_account(account: dict, params: dict, *, task_id: str) -> N
                 raise RuntimeError("Failed to acquire sessionid cookie")
 
             # Step 3: POST /jwt/finalizelogin with refresh_token as nonce
-            await task_manager.set_step(task_id, 3, 4, "Получение куки", acc_id)
+            await task_manager.set_step(task_id, 3, 5, "Получение куки", acc_id)
             form = FormData(fields=[
                 ("nonce", token),
                 ("sessionid", sessionid),
@@ -125,12 +125,14 @@ async def check_token_account(account: dict, params: dict, *, task_id: str) -> N
             session_cookies_json = _json.dumps(all_cookies)
             logger.debug(f"[token_checker] {account.get('login', acc_id)}: got {len(all_cookies)} cookies")
 
-            # Step 4: Fetch profile using authenticated session (cookies set)
-            await task_manager.set_step(task_id, 4, 4, "Получение профиля", acc_id)
+            # Step 4: Fetch profile + VAC/limit using authenticated session
+            await task_manager.set_step(task_id, 4, 5, "Получение профиля", acc_id)
             nickname = None
             steam_level = None
             avatar_url = None
             last_online = None
+            vac_status = ""
+            limit_status = ""
             if steam_id and steam_id != "0":
                 profile_url = f"https://steamcommunity.com/profiles/{steam_id}/"
                 try:
@@ -146,16 +148,60 @@ async def check_token_account(account: dict, params: dict, *, task_id: str) -> N
                             last_online = _parse_last_online(html)
                 except Exception as exc:
                     logger.warning(f"[token_checker] profile fetch error: {exc}")
+            # Step 5: Balance / country
+            await task_manager.set_step(task_id, 5, 5, "Баланс / Страна", acc_id)
+            balance = ""
+            country = ""
+            try:
+                from app.services.steam_store_checker import fetch_balance_and_country_aiohttp
+                balance, country = await fetch_balance_and_country_aiohttp(session, jar)
+                logger.debug(f"[token_checker] {account.get('login', acc_id)}: balance={balance or 'none'}, country={country or 'none'}")
+            except Exception as bal_exc:
+                logger.warning(f"[token_checker] balance/country error: {bal_exc}")
+
+            vac_games: list[str] = []
+            try:
+                from bs4 import BeautifulSoup
+                async with session.get(
+                    "https://help.steampowered.com/en/wizard/VacBans",
+                    timeout=aiohttp.ClientTimeout(total=15),
+                ) as resp:
+                    vac_html = await resp.text()
+                soup = BeautifulSoup(vac_html, "html.parser")
+                limit_status = "Lim" if soup.find("div", class_="help_event_limiteduser") else "NoLim"
+                vac_status = "CLEAN"
+                vac_body = soup.find("div", class_="vac_body")
+                if vac_body:
+                    ban_header = vac_body.find("div", class_="vac_ban_header")
+                    if ban_header:
+                        header_text = ban_header.get_text(strip=True).lower()
+                        if "game developer" in header_text or "game ban" in header_text:
+                            vac_status = "GAME BAN"
+                            for box in vac_body.find_all("div", class_="refund_info_box"):
+                                for span in box.find_all("span", class_="help_highlight_text"):
+                                    name = span.get_text(strip=True)
+                                    if name:
+                                        vac_games.append(name)
+                        else:
+                            vac_status = "VAC"
+            except Exception as exc:
+                logger.warning(f"[token_checker] vac/limit check error: {exc}")
 
         # Update DB
+        import json as _json
         from app.database import get_db
         db = await get_db()
         await db.execute(
             """UPDATE token_accounts
                SET steam_id = ?, nickname = ?, steam_level = ?, avatar_url = ?, last_online = ?,
-                   session_cookies = ?, status = 'valid', updated_at = datetime('now')
+                   session_cookies = ?, vac_status = ?, limit_status = ?, vac_games = ?,
+                   balance = ?, country = ?,
+                   status = 'valid', updated_at = datetime('now')
                WHERE id = ?""",
-            (steam_id, nickname, steam_level, avatar_url, last_online, session_cookies_json, acc_id),
+            (steam_id, nickname, steam_level, avatar_url, last_online,
+             session_cookies_json, vac_status, limit_status,
+             _json.dumps(vac_games) if vac_games else None,
+             balance or None, country or None, acc_id),
         )
         await db.commit()
         logger.success(f"[token_checker] {account.get('login', acc_id)} → valid, steam_id={steam_id}")

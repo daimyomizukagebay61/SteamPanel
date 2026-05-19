@@ -8,6 +8,7 @@ import type {
   MafileInfo,
   MafileExportRequest,
   ActionRequest,
+  ServicesSettings,
   ValidationSettings,
   DisplaySettings,
   ColumnSettings,
@@ -193,6 +194,13 @@ export const api = {
     }),
 
   // Settings
+  getServicesSettings: () =>
+    request<ServicesSettings>("/settings/services"),
+  updateServicesSettings: (data: ServicesSettings) =>
+    request<ServicesSettings>("/settings/services", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   getValidationSettings: () =>
     request<ValidationSettings>("/settings/validation"),
   updateValidationSettings: (data: ValidationSettings) =>
@@ -222,6 +230,20 @@ export const api = {
 
   // Logs
   getLogs: () => request<LogEntry[]>("/logs"),
+
+  // Auto-confirm
+  startAutoConfirm: (ids: number[]) =>
+    request<{ started: number[] }>("/auto-confirm/start", {
+      method: "POST",
+      body: JSON.stringify({ account_ids: ids }),
+    }),
+  stopAutoConfirm: (ids: number[]) =>
+    request<{ stopped: number[] }>("/auto-confirm/stop", {
+      method: "POST",
+      body: JSON.stringify({ account_ids: ids }),
+    }),
+  getAutoConfirmStatus: () =>
+    request<{ running: number[]; errors: Record<string, string> }>("/auto-confirm/status"),
 
   // Auto-accept
   startAutoAccept: (ids: number[]) =>

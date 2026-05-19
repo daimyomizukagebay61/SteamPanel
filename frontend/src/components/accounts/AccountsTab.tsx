@@ -306,11 +306,49 @@ export function AccountsTab() {
       });
     }
 
-    const ql = q.toLowerCase();
+    const ql = q.toLowerCase().trim();
+
+    if (ql === "vac") return accounts.filter((a) => a.vac_status === "VAC" || a.vac_status === "GAME BAN");
+    if (ql === "gameban" || ql === "game ban") return accounts.filter((a) => a.vac_status === "GAME BAN");
+    if (ql === "clean") return accounts.filter((a) => a.vac_status === "CLEAN");
+    if (ql === "lim") return accounts.filter((a) => a.limit_status === "Lim");
+    if (ql === "nolim") return accounts.filter((a) => a.limit_status === "NoLim");
+    if (ql === "ban" || ql === "banned") return accounts.filter((a) => a.ban_status === "BANNED");
+    if (ql === "noban" || ql === "no ban") return accounts.filter((a) => a.ban_status === "NO BAN");
+
+    // Country filter: "country:us" or "country:united states"
+    const countryMatch = ql.match(/^country:(.+)$/);
+    if (countryMatch) {
+      const cv = countryMatch[1].trim().toLowerCase();
+      return accounts.filter((a) => a.country?.toLowerCase().includes(cv));
+    }
+
+    // Balance filter: "balance>10", "usd>10", "balance<5", etc.
+    const balMatch = ql.match(/^(?:balance|usd|eur|rub|cny|gbp|cad|aud|brl|try|jpy|krw|inr|pln|nok|sek|dkk|chf|hkd|sgd|nzd|mxn|vnd)([<>]=?)(\d+\.?\d*)$/);
+    if (balMatch) {
+      const op = balMatch[1];
+      const threshold = parseFloat(balMatch[2]);
+      const parseNum = (b: string | null) => {
+        if (!b) return NaN;
+        const m = b.match(/[\d,]+\.?\d*/);
+        return m ? parseFloat(m[0].replace(/,/g, "")) : NaN;
+      };
+      return accounts.filter((a) => {
+        const n = parseNum(a.balance);
+        if (isNaN(n)) return false;
+        if (op === ">") return n > threshold;
+        if (op === ">=") return n >= threshold;
+        if (op === "<") return n < threshold;
+        if (op === "<=") return n <= threshold;
+        return false;
+      });
+    }
+
     const words = ql.split(/\s+/).filter(Boolean);
     return accounts.filter((a) => {
       if (a.login.toLowerCase().includes(ql)) return true;
       if (a.steam_id && a.steam_id.toLowerCase().includes(ql)) return true;
+      if (a.country && a.country.toLowerCase().includes(ql)) return true;
       if (a.notes) {
         const notesLower = a.notes.toLowerCase();
         return words.some((w) => notesLower.includes(w));
@@ -581,6 +619,26 @@ export function AccountsTab() {
       addToast(
         "info",
         enable ? t("toast.autoAcceptOn") : t("toast.autoAcceptOff"),
+      );
+      await loadAccounts();
+    } catch (e: unknown) {
+      addToast(
+        "error",
+        t("misc.error", { error: e instanceof Error ? e.message : String(e) }),
+      );
+    }
+  };
+
+  const handleToggleAutoConfirm = async (id: number) => {
+    const acc = accounts.find((a) => a.id === id);
+    if (!acc) return;
+    const enable = !acc.auto_confirm;
+    try {
+      if (enable) await api.startAutoConfirm([id]);
+      else await api.stopAutoConfirm([id]);
+      addToast(
+        "info",
+        enable ? t("action.enableAutoConfirm") : t("action.disableAutoConfirm"),
       );
       await loadAccounts();
     } catch (e: unknown) {
@@ -1064,6 +1122,7 @@ export function AccountsTab() {
                 onDelete={handleDelete}
                 onAction={handleAction}
                 onToggleAutoAccept={handleToggleAutoAccept}
+                onToggleAutoConfirm={handleToggleAutoConfirm}
                 onOpenBrowser={handleOpenBrowser}
               />
             </div>

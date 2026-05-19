@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 import aiosqlite
 from loguru import logger
@@ -114,6 +115,7 @@ async def _init_tables(db: aiosqlite.Connection) -> None:
     await db.execute(SQL_CREATE_TOKEN_ACCOUNTS)
     await _migrate(db)
     await db.commit()
+    await _fix_mafile_paths(db)
 
 
 async def _migrate(db: aiosqlite.Connection) -> None:
@@ -131,6 +133,12 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         ("ban_status", "ALTER TABLE accounts ADD COLUMN ban_status TEXT"),
         ("session_cookies", "ALTER TABLE accounts ADD COLUMN session_cookies TEXT"),
         ("last_online", "ALTER TABLE accounts ADD COLUMN last_online TEXT"),
+        ("vac_status", "ALTER TABLE accounts ADD COLUMN vac_status TEXT"),
+        ("limit_status", "ALTER TABLE accounts ADD COLUMN limit_status TEXT"),
+        ("vac_games", "ALTER TABLE accounts ADD COLUMN vac_games TEXT"),
+        ("auto_confirm", "ALTER TABLE accounts ADD COLUMN auto_confirm INTEGER NOT NULL DEFAULT 0"),
+        ("balance", "ALTER TABLE accounts ADD COLUMN balance TEXT"),
+        ("country", "ALTER TABLE accounts ADD COLUMN country TEXT"),
     ]
     for col, sql in migrations:
         if col not in cols:
@@ -163,6 +171,11 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         ("steam_level", "ALTER TABLE logpass_accounts ADD COLUMN steam_level INTEGER"),
         ("avatar_url", "ALTER TABLE logpass_accounts ADD COLUMN avatar_url TEXT"),
         ("last_online", "ALTER TABLE logpass_accounts ADD COLUMN last_online TEXT"),
+        ("vac_status", "ALTER TABLE logpass_accounts ADD COLUMN vac_status TEXT"),
+        ("limit_status", "ALTER TABLE logpass_accounts ADD COLUMN limit_status TEXT"),
+        ("vac_games", "ALTER TABLE logpass_accounts ADD COLUMN vac_games TEXT"),
+        ("balance", "ALTER TABLE logpass_accounts ADD COLUMN balance TEXT"),
+        ("country", "ALTER TABLE logpass_accounts ADD COLUMN country TEXT"),
     ]
     for col, sql in lp_migrations:
         if col not in lp_cols:
@@ -184,6 +197,11 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         ("avatar_url", "ALTER TABLE token_accounts ADD COLUMN avatar_url TEXT"),
         ("last_online", "ALTER TABLE token_accounts ADD COLUMN last_online TEXT"),
         ("check_data", "ALTER TABLE token_accounts ADD COLUMN check_data TEXT"),
+        ("vac_status", "ALTER TABLE token_accounts ADD COLUMN vac_status TEXT"),
+        ("limit_status", "ALTER TABLE token_accounts ADD COLUMN limit_status TEXT"),
+        ("vac_games", "ALTER TABLE token_accounts ADD COLUMN vac_games TEXT"),
+        ("balance", "ALTER TABLE token_accounts ADD COLUMN balance TEXT"),
+        ("country", "ALTER TABLE token_accounts ADD COLUMN country TEXT"),
     ]
     for col, sql in tk_migrations:
         if col not in tk_cols:
@@ -204,6 +222,43 @@ async def _migrate(db: aiosqlite.Connection) -> None:
             logger.warning(
                 "Could not create unique index on logpass_accounts.login (duplicates may exist)"
             )
+
+
+async def _fix_mafile_paths(db: aiosqlite.Connection) -> None:
+    """Repair mafile_path entries that point to the wrong directory.
+
+    This happens when the user moves the SteamPanel folder — absolute paths
+    stored in the DB become invalid. We try to re-locate each mafile by
+    filename inside the current mafiles_dir.
+    """
+    cursor = await db.execute(
+        "SELECT id, login, mafile_path FROM accounts WHERE mafile_path IS NOT NULL AND mafile_path != ''"
+    )
+    rows = await cursor.fetchall()
+    fixed = 0
+    for row in rows:
+        old_path = Path(row["mafile_path"])
+        if old_path.exists():
+            continue  # still valid
+        # Try to find the file by name in current mafiles_dir
+        candidate = settings.mafiles_dir / old_path.name
+        if candidate.exists():
+            await db.execute(
+                "UPDATE accounts SET mafile_path = ? WHERE id = ?",
+                (str(candidate), row["id"]),
+            )
+            fixed += 1
+            logger.info(
+                f"[db] Fixed mafile path for {row['login']}: {old_path} -> {candidate}"
+            )
+        else:
+            logger.warning(
+                f"[db] mafile not found for {row['login']}: {old_path} "
+                f"(also checked {candidate})"
+            )
+    if fixed:
+        await db.commit()
+        logger.info(f"[db] Repaired {fixed} mafile path(s)")
 
 
 async def close_db() -> None:

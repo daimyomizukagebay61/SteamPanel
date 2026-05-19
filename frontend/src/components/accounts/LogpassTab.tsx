@@ -7,7 +7,7 @@ import { LogpassImportModal } from "./LogpassImportModal";
 import { LogpassAddModal } from "./LogpassAddModal";
 import { LogpassEditModal } from "./LogpassEditModal";
 import { LogpassColumnSettingsDropdown } from "./LogpassColumnSettingsDropdown";
-import { StatusBadge, BanBadge } from "./Badges";
+import { StatusBadge, BanBadge, VacBadge, LimitBadge, CountryBadge } from "./Badges";
 import { SteamLevelBadge } from "./SteamLevelBadge";
 import { copyText } from "@/lib/clipboard";
 import {
@@ -304,12 +304,47 @@ export function LogpassTab() {
     }
 
     const ql = q.toLowerCase();
+
+    if (ql === "vac") return accounts.filter((a) => a.vac_status === "VAC" || a.vac_status === "GAME BAN");
+    if (ql === "clean") return accounts.filter((a) => a.vac_status === "CLEAN");
+    if (ql === "lim") return accounts.filter((a) => a.limit_status === "Lim");
+    if (ql === "nolim") return accounts.filter((a) => a.limit_status === "NoLim");
+    if (ql === "ban" || ql === "banned") return accounts.filter((a) => a.ban_status === "BANNED");
+    if (ql === "noban" || ql === "no ban") return accounts.filter((a) => a.ban_status === "NO BAN");
+
+    const countryM = ql.match(/^country:(.+)$/);
+    if (countryM) {
+      const cv = countryM[1].trim();
+      return accounts.filter((a) => a.country?.toLowerCase().includes(cv));
+    }
+
+    const balMatch = ql.match(/^(?:balance|usd|eur|rub|cny|gbp|cad|aud|brl|try|jpy|krw|inr|pln|nok|sek|dkk|chf|hkd|sgd|nzd|mxn|vnd)([<>]=?)(\d+\.?\d*)$/);
+    if (balMatch) {
+      const op = balMatch[1];
+      const threshold = parseFloat(balMatch[2]);
+      const parseNum = (b: string | null) => {
+        if (!b) return NaN;
+        const m = b.match(/[\d,]+\.?\d*/);
+        return m ? parseFloat(m[0].replace(/,/g, "")) : NaN;
+      };
+      return accounts.filter((a) => {
+        const n = parseNum(a.balance);
+        if (isNaN(n)) return false;
+        if (op === ">") return n > threshold;
+        if (op === ">=") return n >= threshold;
+        if (op === "<") return n < threshold;
+        if (op === "<=") return n <= threshold;
+        return false;
+      });
+    }
+
     return accounts.filter(
       (a) =>
         a.login.toLowerCase().includes(ql) ||
         (a.steam_id ?? "").toLowerCase().includes(ql) ||
         (a.nickname ?? "").toLowerCase().includes(ql) ||
         (a.notes ?? "").toLowerCase().includes(ql) ||
+        (a.country ?? "").toLowerCase().includes(ql) ||
         (a.license ?? "").toLowerCase().includes(ql),
     );
   }, [accounts, searchQuery]);
@@ -705,6 +740,10 @@ export function LogpassTab() {
                   <th className="px-3 py-2">{t("col.status")}</th>
                 )}
                 {cols.ban && <th className="px-3 py-2">{t("col.ban")}</th>}
+                {cols.vac && <th className="px-3 py-2">{t("col.vac")}</th>}
+                {cols.limit && <th className="px-3 py-2">{t("col.limit")}</th>}
+                {cols.balance && <th className="px-3 py-2">{t("col.balance")}</th>}
+                {cols.country && <th className="px-3 py-2">{t("col.country")}</th>}
                 {cols.prime && (
                   <th
                     className="px-3 py-2 cursor-pointer select-none hover:text-gray-300"
@@ -1015,10 +1054,29 @@ function LogpassRow({
           <StatusBadge status={a.status} />
         </td>
       )}
-      {/* Ban */}
       {cols.ban && (
         <td className="px-3 py-2">
           <BanBadge status={a.ban_status} />
+        </td>
+      )}
+      {cols.vac && (
+        <td className="px-3 py-2">
+          <VacBadge status={a.vac_status} games={a.vac_games} />
+        </td>
+      )}
+      {cols.limit && (
+        <td className="px-3 py-2">
+          <LimitBadge status={a.limit_status} />
+        </td>
+      )}
+      {cols.balance && (
+        <td className="px-3 py-2 text-xs font-mono text-gray-300 whitespace-nowrap">
+          {a.balance || "—"}
+        </td>
+      )}
+      {cols.country && (
+        <td className="px-3 py-2">
+          <CountryBadge country={a.country} />
         </td>
       )}
       {/* Prime, Trophy, Behavior */}

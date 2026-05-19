@@ -222,6 +222,37 @@ async def _fetch_phone_digits(session: aiohttp.ClientSession) -> dict:
         return {"phone_digits": None}
 
 
+async def _fetch_vac_and_limit(session: aiohttp.ClientSession) -> dict:
+    """GET /wizard/VacBans → vac_status, limit_status, vac_games."""
+    url = "https://help.steampowered.com/en/wizard/VacBans"
+    try:
+        async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+            html = await resp.text()
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+        limit_status = "Lim" if soup.find("div", class_="help_event_limiteduser") else "NoLim"
+        vac_status = "CLEAN"
+        vac_games: list[str] = []
+        vac_body = soup.find("div", class_="vac_body")
+        if vac_body:
+            ban_header = vac_body.find("div", class_="vac_ban_header")
+            if ban_header:
+                header_text = ban_header.get_text(strip=True).lower()
+                if "game developer" in header_text or "game ban" in header_text:
+                    vac_status = "GAME BAN"
+                    for box in vac_body.find_all("div", class_="refund_info_box"):
+                        for span in box.find_all("span", class_="help_highlight_text"):
+                            name = span.get_text(strip=True)
+                            if name:
+                                vac_games.append(name)
+                else:
+                    vac_status = "VAC"
+        return {"vac_status": vac_status, "limit_status": limit_status, "vac_games": vac_games}
+    except Exception as exc:
+        logger.debug(f"[full_check] vac/limit check error: {exc}")
+        return {"vac_status": "", "limit_status": "", "vac_games": []}
+
+
 async def _fetch_alert_status(session: aiohttp.ClientSession) -> dict:
     """GET /supportmessages/ → alert_status string."""
     url = "https://store.steampowered.com/supportmessages/"
@@ -529,6 +560,7 @@ async def full_check_token_account(
             _fetch_phone_digits(session),
             _fetch_alert_status(session),
             _fetch_market_limited(session),
+            _fetch_vac_and_limit(session),
             return_exceptions=True,
         )
 
@@ -561,6 +593,11 @@ async def full_check_token_account(
             page_results[4]
             if isinstance(page_results[4], dict)
             else {"market_limited": False}
+        )
+        vac_data = (
+            page_results[5]
+            if isinstance(page_results[5], dict)
+            else {"vac_status": "", "limit_status": ""}
         )
 
         # -------------------------------------------------------------- #
@@ -625,6 +662,10 @@ async def full_check_token_account(
         "phone_digits": phone_data.get("phone_digits"),
         "alert_status": alert_data.get("alert_status", "None"),
         "market_limited": market_data.get("market_limited", False),
+        # VAC / limit status
+        "vac_status": vac_data.get("vac_status", ""),
+        "limit_status": vac_data.get("limit_status", ""),
+        "vac_games": vac_data.get("vac_games", []),
         # Timestamp
         "checked_at": datetime.utcnow().isoformat(),
     }
@@ -641,6 +682,12 @@ async def full_check_token_account(
                last_online   = ?,
                session_cookies = ?,
                check_data    = ?,
+               ban_status    = ?,
+               vac_status    = ?,
+               limit_status  = ?,
+               vac_games     = ?,
+               balance       = ?,
+               country       = ?,
                status        = 'valid',
                updated_at    = datetime('now')
            WHERE id = ?""",
@@ -652,6 +699,12 @@ async def full_check_token_account(
             check_data.get("last_online"),
             session_cookies_json,
             _json.dumps(check_data),
+            check_data.get("alert_status"),
+            check_data.get("vac_status"),
+            check_data.get("limit_status"),
+            _json.dumps(check_data.get("vac_games", [])) if check_data.get("vac_games") else None,
+            check_data.get("balance_raw") or None,
+            check_data.get("user_country") or None,
             acc_id,
         ),
     )

@@ -9,7 +9,9 @@ const COL_LABEL_KEYS: Record<keyof ColumnSettings, string> = {
   steam_id: "col.steamId", login: "col.login", password: "col.password",
   login_pass: "col.loginPass", email: "col.email", email_pass: "col.emailPass",
   email_login_pass: "col.emailLoginPass", phone: "col.phone", status: "col.status",
-  ban: "col.ban", twofa: "col.twofa", mafile: "col.mafile", proxy: "col.proxy",
+  ban: "col.ban", vac: "col.vac", limit: "col.limit",
+  balance: "col.balance", country: "col.country",
+  twofa: "col.twofa", mafile: "col.mafile", proxy: "col.proxy",
   notes: "col.notes", actions: "col.actions",
 };
 

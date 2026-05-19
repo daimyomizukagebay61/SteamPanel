@@ -4,10 +4,10 @@ import { useAccountStore } from "@/stores/accountStore";
 import { copyText } from "@/lib/clipboard";
 import { useUiStore } from "@/stores/uiStore";
 import { api } from "@/api/client";
-import { StatusBadge, BanBadge, MafileBadge } from "./Badges";
+import { StatusBadge, BanBadge, MafileBadge, VacBadge, LimitBadge, CountryBadge } from "./Badges";
 import { ActionMenu } from "./ActionMenu";
 import { SteamLevelBadge } from "./SteamLevelBadge";
-import { IconCheck, IconAlertTriangle, IconEye, IconEyeOff, IconKey, IconRefresh, IconEdit, IconTrash } from "@/components/shared/Icons";
+import { IconCheck, IconCheckCircle, IconAlertTriangle, IconEye, IconEyeOff, IconKey, IconRefresh, IconEdit, IconTrash } from "@/components/shared/Icons";
 import { useT } from "@/lib/i18n";
 
 interface Props {
@@ -21,10 +21,11 @@ interface Props {
   onDelete: (id: number) => void;
   onAction: (id: number, action: string, params: Record<string, string>) => void;
   onToggleAutoAccept: (id: number) => void;
+  onToggleAutoConfirm: (id: number) => void;
   onOpenBrowser: (id: number) => void;
 }
 
-export function AccountRow({ account: a, visibleColumns: v, proxyLabel, isProcessing, accountResult, accountStep, onEdit, onDelete, onAction, onToggleAutoAccept, onOpenBrowser }: Props) {
+export function AccountRow({ account: a, visibleColumns: v, proxyLabel, isProcessing, accountResult, accountStep, onEdit, onDelete, onAction, onToggleAutoAccept, onToggleAutoConfirm, onOpenBrowser }: Props) {
   const selectedIds = useAccountStore((s) => s.selectedIds);
   const toggleSelect = useAccountStore((s) => s.toggleSelect);
   const addToast = useUiStore((s) => s.addToast);
@@ -192,6 +193,18 @@ export function AccountRow({ account: a, visibleColumns: v, proxyLabel, isProces
       {v.phone && <td className="px-3 py-2 text-gray-400 text-xs">{a.phone || "—"}</td>}
       {v.status && <td className="px-3 py-2"><StatusBadge status={a.status} /></td>}
       {v.ban && <td className="px-3 py-2"><BanBadge status={a.ban_status} /></td>}
+      {v.vac && <td className="px-3 py-2"><VacBadge status={a.vac_status} games={a.vac_games} /></td>}
+      {v.limit && <td className="px-3 py-2"><LimitBadge status={a.limit_status} /></td>}
+      {v.balance && (
+        <td className="px-3 py-2 text-xs font-mono text-gray-300 whitespace-nowrap">
+          {a.balance || "—"}
+        </td>
+      )}
+      {v.country && (
+        <td className="px-3 py-2">
+          <CountryBadge country={a.country} />
+        </td>
+      )}
       {v.twofa && (
         <td className="px-3 py-2 whitespace-nowrap">
           {a.shared_secret ? (
@@ -269,11 +282,26 @@ export function AccountRow({ account: a, visibleColumns: v, proxyLabel, isProces
       {v.actions && (
         <td className="px-3 py-2 whitespace-nowrap">
           <div className="flex items-center gap-1.5">
-            <ActionMenu account={a} onAction={onAction} onToggleAutoAccept={onToggleAutoAccept} />
+            <ActionMenu account={a} onAction={onAction} onToggleAutoAccept={onToggleAutoAccept} onToggleAutoConfirm={onToggleAutoConfirm} />
             <button onClick={() => onEdit(a.id)} className="text-gray-400 hover:text-accent" title={t("tip.edit")}><IconEdit size={14} /></button>
             <button onClick={() => onDelete(a.id)} className="text-gray-400 hover:text-red-400" title={t("tip.delete")}><IconTrash size={14} /></button>
             {a.auto_accept ? (
-              <span title={t("tip.autoAcceptActive")}><IconRefresh size={14} className="text-accent" /></span>
+              <span
+                title={t("tip.autoAcceptActive")}
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-accent/20 border border-accent/50 text-accent text-[10px] font-bold leading-none"
+              >
+                <IconRefresh size={10} />
+                AA
+              </span>
+            ) : null}
+            {a.auto_confirm ? (
+              <span
+                title={t("tip.autoConfirmActive")}
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-green-500/20 border border-green-500/50 text-green-400 text-[10px] font-bold leading-none"
+              >
+                <IconCheckCircle size={10} />
+                AC
+              </span>
             ) : null}
           </div>
         </td>

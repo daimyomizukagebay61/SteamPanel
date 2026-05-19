@@ -7,7 +7,9 @@ import { useT } from "@/lib/i18n";
 const COL_LABEL_KEYS: Record<keyof TokenColumnSettings, string> = {
   browser: "col.browser", profile: "col.profile", last_online: "col.lastOnline",
   steam_id: "col.steamId", login: "col.login", token: "col.token",
-  status: "col.status", proxy: "col.proxy", notes: "col.notes", actions: "col.actions",
+  status: "col.status", ban: "col.ban", vac: "col.vac", limit: "col.limit",
+  balance: "col.balance", country: "col.country",
+  proxy: "col.proxy", notes: "col.notes", actions: "col.actions",
 };
 
 export function TokenColumnSettingsDropdown() {

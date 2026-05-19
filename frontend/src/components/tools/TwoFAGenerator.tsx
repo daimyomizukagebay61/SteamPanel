@@ -39,7 +39,7 @@ export function TwoFAGenerator() {
       const q = search.toLowerCase();
       return !q || a.login.toLowerCase().includes(q) || (a.steam_id ?? "").includes(q);
     })
-    .slice(0, 12);
+    .slice(0, 10);
 
   const generate = async () => {
     try {
@@ -70,68 +70,87 @@ export function TwoFAGenerator() {
     }`;
 
   return (
-    <div className="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden flex flex-col">
-      <div className="px-4 py-3 border-b border-dark-600 flex items-center gap-2">
-        <IconKey size={14} className="text-accent shrink-0" />
+    <div className="bg-dark-800 border border-dark-600 rounded-xl flex flex-col">
+      <div className="px-5 py-3.5 border-b border-dark-600 flex items-center gap-2.5">
+        <IconKey size={15} className="text-accent shrink-0" />
         <span className="text-sm font-semibold text-gray-100">{t("tools.2faGenerator")}</span>
       </div>
 
-      <div className="px-4 pt-3 pb-2">
-        <div className="flex gap-1 bg-dark-900 rounded p-0.5 mb-3">
-          <button type="button" className={tabCls("secret")} onClick={() => setMode("secret")}>Shared secret</button>
-          <button type="button" className={tabCls("account")} onClick={() => setMode("account")}>Из Mafile</button>
+      <div className="flex flex-1 gap-0">
+        {/* Left: controls */}
+        <div className="flex-1 px-5 py-5 flex flex-col gap-4">
+          <div className="flex gap-1 bg-dark-900 rounded p-0.5">
+            <button type="button" className={tabCls("secret")} onClick={() => setMode("secret")}>Shared secret</button>
+            <button type="button" className={tabCls("account")} onClick={() => setMode("account")}>Из Mafile</button>
+          </div>
+
+          {mode === "secret" ? (
+            <div className="flex gap-2">
+              <input
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && generate()}
+                placeholder="shared_secret"
+                className="flex-1 bg-dark-700 border border-dark-600 rounded px-3 py-2 text-sm"
+              />
+              <button type="button" onClick={generate} className="btn-primary text-sm px-4 py-2">
+                {t("btn.generate")}
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className="relative flex-1" ref={dropdownRef}>
+                <input
+                  value={selected ? `${selected.login}${selected.steam_id ? " · " + selected.steam_id : ""}` : search}
+                  onChange={(e) => { setSearch(e.target.value); setSelected(null); setOpen(true); }}
+                  onFocus={() => setOpen(true)}
+                  placeholder="Логин или SteamID..."
+                  className="w-full bg-dark-700 border border-dark-600 rounded px-3 py-2 text-sm"
+                />
+                {open && filtered.length > 0 && (
+                  <div className="absolute top-full mt-1 left-0 right-0 bg-dark-800 border border-dark-600 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                    {filtered.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-dark-600 transition-colors flex items-center justify-between gap-2"
+                        onMouseDown={() => { setSelected(a); setSearch(""); setOpen(false); }}
+                      >
+                        <span className="text-gray-200 truncate">{a.login}</span>
+                        {a.steam_id && <span className="text-gray-500 text-xs shrink-0">{a.steam_id}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={generate}
+                disabled={!selected}
+                className="btn-primary text-sm px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {t("btn.generate")}
+              </button>
+            </div>
+          )}
+
         </div>
 
-        {mode === "secret" ? (
-          <div className="flex gap-2">
-            <input
-              value={secret}
-              onChange={(e) => setSecret(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && generate()}
-              placeholder="shared_secret"
-              className="flex-1 bg-dark-700 border border-dark-600 rounded px-3 py-1.5 text-sm"
-            />
-            <button type="button" onClick={generate} className="btn-primary text-sm px-3 py-1.5">{t("btn.generate")}</button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <div className="relative flex-1" ref={dropdownRef}>
-              <input
-                value={selected ? `${selected.login}${selected.steam_id ? " · " + selected.steam_id : ""}` : search}
-                onChange={(e) => { setSearch(e.target.value); setSelected(null); setOpen(true); }}
-                onFocus={() => setOpen(true)}
-                placeholder="Логин или SteamID..."
-                className="w-full bg-dark-700 border border-dark-600 rounded px-3 py-1.5 text-sm"
-              />
-              {open && filtered.length > 0 && (
-                <div className="absolute top-full mt-1 left-0 right-0 bg-dark-800 border border-dark-600 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
-                  {filtered.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-dark-600 transition-colors flex items-center justify-between gap-2"
-                      onMouseDown={() => { setSelected(a); setSearch(""); setOpen(false); }}
-                    >
-                      <span className="text-gray-200 truncate">{a.login}</span>
-                      {a.steam_id && <span className="text-gray-500 text-xs shrink-0">{a.steam_id}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button type="button" onClick={generate} disabled={!selected} className="btn-primary text-sm px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed">{t("btn.generate")}</button>
-          </div>
-        )}
-
-        {code && (
-          <div
-            className="mt-3 text-2xl font-mono text-accent cursor-pointer tabular-nums tracking-widest"
-            onClick={handleCopy}
-            title={t("tools.clickCopy")}
-          >
-            {code}
-          </div>
-        )}
+        {/* Right: code display */}
+        <div
+          className="border-l border-dark-600 flex flex-col items-center justify-center w-52 shrink-0 cursor-pointer select-none group gap-2"
+          onClick={handleCopy}
+          title={t("tools.clickCopy")}
+        >
+          <p className="text-xs text-gray-600">{t("tools.clickCopy")}</p>
+          {code ? (
+            <span className="text-4xl font-mono text-accent tabular-nums tracking-widest group-hover:text-accent/80 transition-colors">
+              {code}
+            </span>
+          ) : (
+            <span className="text-2xl font-mono text-dark-500 tracking-widest">— — —</span>
+          )}
+        </div>
       </div>
     </div>
   );

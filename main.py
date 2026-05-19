@@ -11,6 +11,7 @@ from app.api import (
     accounts,
     actions,
     auto_accept,
+    auto_confirm,
     browser,
     logpass,
     logs,
@@ -22,6 +23,7 @@ from app.api import (
 from app.api import settings as settings_api
 from app.config import settings
 from app.core.auto_accept import auto_accept_manager
+from app.core.auto_confirm import auto_confirm_manager
 from app.core.logging import setup_logging
 from app.core.proxy_manager import proxy_manager
 from app.database import close_db, get_db
@@ -65,9 +67,18 @@ async def lifespan(app: FastAPI):
         if account.get("shared_secret"):
             await auto_accept_manager.start(account)
 
+    # Resume auto-confirm for accounts that had it enabled
+    cursor = await db.execute("SELECT * FROM accounts WHERE auto_confirm = 1")
+    rows = await cursor.fetchall()
+    for row in rows:
+        account = dict(row)
+        if account.get("identity_secret"):
+            await auto_confirm_manager.start(account)
+
     yield
 
     await auto_accept_manager.stop_all()
+    await auto_confirm_manager.stop_all()
     await close_db()
 
 
@@ -91,6 +102,7 @@ app.include_router(tasks.router)
 app.include_router(mafile_tools.router)
 app.include_router(logs.router)
 app.include_router(auto_accept.router)
+app.include_router(auto_confirm.router)
 app.include_router(browser.router)
 app.include_router(settings_api.router)
 app.include_router(logpass.router)

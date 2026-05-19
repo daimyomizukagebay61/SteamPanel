@@ -8,6 +8,7 @@ from loguru import logger
 from app.services.steam_auth import _resolve_proxy, ProxyRequestStrategy, close_steam, extract_session_cookies
 from app.services.steam_ban import check_ban
 from app.services.steam_profile import fetch_profile
+from app.services.steam_vac_checker import check_vac_and_limit
 from app.core.proxy_manager import proxy_manager
 from app.core.task_manager import task_manager
 
@@ -66,16 +67,25 @@ async def check_logpass_account(account: dict, params: dict, *, task_id: str) ->
 
         steam_id = str(steam.steamid)
         ban_status = ""
+        vac_status = ""
+        limit_status = ""
+        vac_games: list[str] = []
         if val_settings.get("check_ban"):
-            await task_manager.set_step(task_id, 2, 3, "Проверка бана", acc_id)
+            await task_manager.set_step(task_id, 2, 4, "Проверка бана", acc_id)
             ban_status = await check_ban(steam)
+            vac_status, limit_status, vac_games = await check_vac_and_limit(steam)
+
+        await task_manager.set_step(task_id, 3, 4, "Баланс / Страна", acc_id)
+        from app.services.steam_store_checker import fetch_balance_and_country
+        balance, country = await fetch_balance_and_country(steam)
+        logger.info(f"[checker] {account['login']}: balance={balance or 'none'}, country={country or 'none'}")
 
         nickname = None
         steam_level = None
         avatar_url = None
         last_online = None
         if steam_id and steam_id != "0" and val_settings.get("fetch_profile"):
-            await task_manager.set_step(task_id, 3, 3, "Получение профиля", acc_id)
+            await task_manager.set_step(task_id, 4, 4, "Получение профиля", acc_id)
             profile = await fetch_profile(steam_id, steam=steam)
             if profile:
                 nickname = profile.get("nickname")
@@ -83,14 +93,20 @@ async def check_logpass_account(account: dict, params: dict, *, task_id: str) ->
                 avatar_url = profile.get("avatar_url")
                 last_online = profile.get("last_online")
 
+        import json as _json
         from app.database import get_db
         db = await get_db()
         await db.execute(
             """UPDATE logpass_accounts
                SET steam_id = ?, nickname = ?, steam_level = ?, avatar_url = ?, last_online = ?,
-                   ban_status = ?, status = 'valid', updated_at = datetime('now')
+                   ban_status = ?, vac_status = ?, limit_status = ?, vac_games = ?,
+                   balance = ?, country = ?,
+                   status = 'valid', updated_at = datetime('now')
                WHERE id = ?""",
-            (steam_id, nickname, steam_level, avatar_url, last_online, ban_status, acc_id),
+            (steam_id, nickname, steam_level, avatar_url, last_online,
+             ban_status, vac_status, limit_status,
+             _json.dumps(vac_games) if vac_games else None,
+             balance or None, country or None, acc_id),
         )
         await db.commit()
         logger.success(f"[checker] {account['login']} → valid, ban={ban_status}")
@@ -222,7 +238,7 @@ async def full_parse_logpass_account(account: dict, params: dict, *, task_id: st
     )
 
     try:
-        await task_manager.set_step(task_id, 1, 6, "Авторизация", acc_id)
+        await task_manager.set_step(task_id, 1, 7, "Авторизация", acc_id)
         await steam.login_to_steam()
 
         # Save session cookies
@@ -241,13 +257,14 @@ async def full_parse_logpass_account(account: dict, params: dict, *, task_id: st
 
         steam_id = str(steam.steamid)
 
-        await task_manager.set_step(task_id, 2, 6, "Проверка бана", acc_id)
+        await task_manager.set_step(task_id, 2, 7, "Проверка бана", acc_id)
         ban_status = await check_ban(steam)
+        vac_status, limit_status, vac_games = await check_vac_and_limit(steam)
 
         nickname = avatar_url = last_online = None
         steam_level = None
         if steam_id and steam_id != "0":
-            await task_manager.set_step(task_id, 3, 6, "Профиль", acc_id)
+            await task_manager.set_step(task_id, 3, 7, "Профиль", acc_id)
             profile = await fetch_profile(steam_id, steam=steam)
             if profile:
                 nickname = profile.get("nickname")
@@ -255,29 +272,40 @@ async def full_parse_logpass_account(account: dict, params: dict, *, task_id: st
                 avatar_url = profile.get("avatar_url")
                 last_online = profile.get("last_online")
 
+        await task_manager.set_step(task_id, 4, 7, "Баланс / Страна", acc_id)
+        from app.services.steam_store_checker import fetch_balance_and_country
+        balance, country = await fetch_balance_and_country(steam)
+        logger.info(f"[full_parse] {account['login']}: balance={balance or 'none'}, country={country or 'none'}")
+
         prime = "Disabled"
         trophy = None
         behavior = None
         if steam_id and steam_id != "0":
-            await task_manager.set_step(task_id, 4, 6, "Prime / Trophy", acc_id)
+            await task_manager.set_step(task_id, 5, 7, "Prime / Trophy", acc_id)
             prime = await _check_cs2_prime(steam, steam_id)
             trophy = await _check_dota_trophy(steam, steam_id)
             behavior = await _check_dota_behavior(steam, steam_id)
 
-        await task_manager.set_step(task_id, 5, 6, "Лицензии", acc_id)
+        await task_manager.set_step(task_id, 6, 7, "Лицензии", acc_id)
         license_str = await _check_licenses(steam)
 
-        await task_manager.set_step(task_id, 6, 6, "Сохранение", acc_id)
+        import json as _json
+        await task_manager.set_step(task_id, 7, 7, "Сохранение", acc_id)
         from app.database import get_db
         db = await get_db()
         await db.execute(
             """UPDATE logpass_accounts
                SET steam_id = ?, nickname = ?, steam_level = ?, avatar_url = ?, last_online = ?,
-                   ban_status = ?, prime = ?, trophy = ?, behavior = ?, license = ?,
+                   ban_status = ?, vac_status = ?, limit_status = ?, vac_games = ?,
+                   balance = ?, country = ?,
+                   prime = ?, trophy = ?, behavior = ?, license = ?,
                    status = 'valid', updated_at = datetime('now')
                WHERE id = ?""",
             (steam_id, nickname, steam_level, avatar_url, last_online,
-             ban_status, prime, trophy, behavior, license_str, acc_id),
+             ban_status, vac_status, limit_status,
+             _json.dumps(vac_games) if vac_games else None,
+             balance or None, country or None,
+             prime, trophy, behavior, license_str, acc_id),
         )
         await db.commit()
         logger.success(f"[full_parse] {account['login']} → valid, ban={ban_status}, prime={prime}, trophy={trophy}, behavior={behavior}, licenses={len(license_str.split(', ')) if license_str else 0}")

@@ -19,6 +19,10 @@ const COLUMN_KEYS: (keyof ColumnSettings)[] = [
   "phone",
   "status",
   "ban",
+  "vac",
+  "limit",
+  "balance",
+  "country",
   "twofa",
   "mafile",
   "proxy",
@@ -40,6 +44,10 @@ const COL_LABEL_KEYS: Record<keyof ColumnSettings, string> = {
   phone: "col.phone",
   status: "col.status",
   ban: "col.ban",
+  vac: "col.vac",
+  limit: "col.limit",
+  balance: "col.balance",
+  country: "col.country",
   twofa: "col.twofa",
   mafile: "col.mafile",
   proxy: "col.proxy",
@@ -60,6 +68,7 @@ interface Props {
     params: Record<string, string>,
   ) => void;
   onToggleAutoAccept: (id: number) => void;
+  onToggleAutoConfirm: (id: number) => void;
   onOpenBrowser: (id: number) => void;
 }
 
@@ -72,6 +81,7 @@ export function AccountTable({
   onDelete,
   onAction,
   onToggleAutoAccept,
+  onToggleAutoConfirm,
   onOpenBrowser,
 }: Props) {
   const selectedIds = useAccountStore((s) => s.selectedIds);
@@ -101,46 +111,56 @@ export function AccountTable({
   const [visibleCount, setVisibleCount] = useState(BATCH);
   const sentinelRef = useRef<HTMLTableRowElement>(null);
 
-  type SortField = "last_online" | null;
+  type SortField = "last_online" | "ban" | "vac" | "limit" | null;
   type SortDir = "asc" | "desc";
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       if (sortDir === "asc") setSortDir("desc");
-      else {
-        setSortField(null);
-        setSortDir("asc");
-      }
+      else { setSortField(null); setSortDir("asc"); }
     } else {
       setSortField(field);
       setSortDir("asc");
     }
   };
 
+  const STATUS_ORDER: Record<string, number> = {
+    BANNED: 0, "GAME BAN": 0, VAC: 1, Lim: 0, NoLim: 1,
+    "NO BAN": 2, CLEAN: 2,
+  };
+
   const sorted = useMemo(() => {
     if (!sortField) return accounts;
     const dir = sortDir === "asc" ? 1 : -1;
-    const EMPTY = Symbol();
+    const EMPTY = 999;
     return [...accounts].sort((a, b) => {
-      const parseOnline = (
-        v: string | null | undefined,
-      ): number | typeof EMPTY => {
-        if (!v || v === "\u2014") return EMPTY;
-        if (v === "online") return -1;
-        const m = v.match(/^(\d+)([mhd])$/i);
-        if (!m) return EMPTY;
-        const n = parseInt(m[1], 10);
-        if (m[2] === "m") return n;
-        if (m[2] === "h") return n * 60;
-        return n * 1440;
-      };
-      const va = parseOnline(a.last_online);
-      const vb = parseOnline(b.last_online);
-      if (va === EMPTY && vb === EMPTY) return 0;
+      let va: number, vb: number;
+      if (sortField === "last_online") {
+        const parse = (v: string | null | undefined): number => {
+          if (!v || v === "\u2014") return EMPTY;
+          if (v === "online") return -1;
+          const m = v.match(/^(\d+)([mhd])$/i);
+          if (!m) return EMPTY;
+          const n = parseInt(m[1], 10);
+          if (m[2] === "m") return n;
+          if (m[2] === "h") return n * 60;
+          return n * 1440;
+        };
+        va = parse(a.last_online); vb = parse(b.last_online);
+      } else if (sortField === "ban") {
+        va = STATUS_ORDER[a.ban_status ?? ""] ?? EMPTY;
+        vb = STATUS_ORDER[b.ban_status ?? ""] ?? EMPTY;
+      } else if (sortField === "vac") {
+        va = STATUS_ORDER[a.vac_status ?? ""] ?? EMPTY;
+        vb = STATUS_ORDER[b.vac_status ?? ""] ?? EMPTY;
+      } else {
+        va = STATUS_ORDER[a.limit_status ?? ""] ?? EMPTY;
+        vb = STATUS_ORDER[b.limit_status ?? ""] ?? EMPTY;
+      }
+      if (va === vb) return 0;
       if (va === EMPTY) return 1;
       if (vb === EMPTY) return -1;
-      if (va === vb) return 0;
       return (va < vb ? -1 : 1) * dir;
     });
   }, [accounts, sortField, sortDir]);
@@ -148,6 +168,7 @@ export function AccountTable({
   useEffect(() => {
     setVisibleCount(BATCH);
   }, [accounts, sortField, sortDir]);
+
 
   const visible = useMemo(
     () => sorted.slice(0, visibleCount),
@@ -217,19 +238,18 @@ export function AccountTable({
             </th>
             <th className="w-5"></th>
             {visibleKeys.map((k) => {
-              if (k === "last_online") {
+              const sortKey = (k === "ban" || k === "vac" || k === "limit" || k === "last_online")
+                ? k as SortField
+                : null;
+              if (sortKey) {
                 return (
                   <th
                     key={k}
                     className="px-3 py-2 cursor-pointer select-none hover:text-gray-300"
-                    onClick={() => toggleSort("last_online")}
+                    onClick={() => toggleSort(sortKey)}
                   >
                     {t(COL_LABEL_KEYS[k])}
-                    {sortField === "last_online"
-                      ? sortDir === "asc"
-                        ? " ▲"
-                        : " ▼"
-                      : ""}
+                    {sortField === sortKey ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
                   </th>
                 );
               }
@@ -258,6 +278,7 @@ export function AccountTable({
               onDelete={onDelete}
               onAction={onAction}
               onToggleAutoAccept={onToggleAutoAccept}
+              onToggleAutoConfirm={onToggleAutoConfirm}
               onOpenBrowser={onOpenBrowser}
             />
           ))}

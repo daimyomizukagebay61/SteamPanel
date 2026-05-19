@@ -38,9 +38,10 @@ interface Props {
   account: Account;
   onAction: (id: number, action: string, params: Record<string, string>) => void;
   onToggleAutoAccept: (id: number) => void;
+  onToggleAutoConfirm: (id: number) => void;
 }
 
-export function ActionMenu({ account, onAction, onToggleAutoAccept }: Props) {
+export function ActionMenu({ account, onAction, onToggleAutoAccept, onToggleAutoConfirm }: Props) {
   const [open, setOpen] = useState(false);
   const [paramPrompt, setParamPrompt] = useState<{ action: string; title: string } | null>(null);
   const [paramValue, setParamValue] = useState("");
@@ -109,6 +110,7 @@ export function ActionMenu({ account, onAction, onToggleAutoAccept }: Props) {
   };
 
   const aaLabel = account.auto_accept ? t("action.disableAutoAccept") : t("action.enableAutoAcceptLogin");
+  const acLabel = account.auto_confirm ? t("action.disableAutoConfirm") : t("action.enableAutoConfirm");
 
   const handleGenerate2FA = async () => {
     setOpen(false);
@@ -206,6 +208,13 @@ export function ActionMenu({ account, onAction, onToggleAutoAccept }: Props) {
             <hr className="border-dark-600 my-1" />
             <button onClick={() => { setOpen(false); onToggleAutoAccept(account.id); }} className="action-menu-item">
               {aaLabel}
+            </button>
+            <button
+              onClick={() => { setOpen(false); onToggleAutoConfirm(account.id); }}
+              disabled={!account.identity_secret}
+              className={`action-menu-item ${!account.identity_secret ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              {acLabel}
             </button>
           </div>,
           document.body,

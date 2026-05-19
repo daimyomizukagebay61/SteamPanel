@@ -8,6 +8,8 @@ const COL_LABEL_KEYS: Record<keyof LogpassColumnSettings, string> = {
   browser: "col.browser", profile: "col.profile", last_online: "col.lastOnline",
   steam_id: "col.steamId", login: "col.login", password: "col.password",
   login_pass: "col.loginPass", status: "col.status", ban: "col.ban",
+  vac: "col.vac", limit: "col.limit",
+  balance: "col.balance", country: "col.country",
   prime: "col.prime", trophy: "col.trophy", behavior: "col.behavior",
   license: "col.license", proxy: "col.proxy", notes: "col.notes", actions: "col.actions",
 };

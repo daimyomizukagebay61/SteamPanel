@@ -31,6 +31,27 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+_SERVICES_DEFAULTS: dict = {
+    "auto_accept_interval": 15,
+    "auto_confirm_interval": 30,
+}
+
+
+def read_services_settings() -> dict:
+    """Read the 'services' section from data/settings.json (sync)."""
+    import json as _json
+
+    settings_path = settings.data_dir / "settings.json"
+    result = _SERVICES_DEFAULTS.copy()
+    if settings_path.exists():
+        try:
+            data = _json.loads(settings_path.read_text("utf-8"))
+            result.update(data.get("services", {}))
+        except Exception:
+            pass
+    return result
+
+
 # Defaults for data/settings.json → "validation" section
 _VALIDATION_DEFAULTS: dict = {
     "fetch_profile": True,

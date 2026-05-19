@@ -34,8 +34,11 @@ data_backup/
 *~
 .DS_Store
 Thumbs.db
+.claude
 
 # Misc
 example/
 *.log
 *.mafile
+*.md
+!README.md

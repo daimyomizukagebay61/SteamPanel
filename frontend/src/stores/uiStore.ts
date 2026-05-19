@@ -24,12 +24,16 @@ const DEFAULT_COLUMNS: ColumnSettings = {
   phone: true,
   status: true,
   ban: true,
+  vac: true,
+  limit: true,
   twofa: true,
   mafile: true,
   proxy: true,
   notes: true,
   actions: true,
   last_online: true,
+  balance: true,
+  country: true,
 };
 
 const DEFAULT_LOGPASS_COLUMNS: LogpassColumnSettings = {
@@ -41,6 +45,8 @@ const DEFAULT_LOGPASS_COLUMNS: LogpassColumnSettings = {
   login_pass: true,
   status: true,
   ban: true,
+  vac: true,
+  limit: true,
   prime: true,
   trophy: true,
   behavior: true,
@@ -49,6 +55,8 @@ const DEFAULT_LOGPASS_COLUMNS: LogpassColumnSettings = {
   notes: true,
   actions: true,
   last_online: true,
+  balance: true,
+  country: true,
 };
 
 const DEFAULT_TOKEN_COLUMNS: TokenColumnSettings = {
@@ -59,9 +67,14 @@ const DEFAULT_TOKEN_COLUMNS: TokenColumnSettings = {
   login: true,
   token: true,
   status: true,
+  ban: true,
+  vac: true,
+  limit: true,
   proxy: true,
   notes: true,
   actions: true,
+  balance: true,
+  country: true,
 };
 
 interface UiState {

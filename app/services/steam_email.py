@@ -123,13 +123,18 @@ async def validate_account(account: dict, params: dict, task_id: str = "") -> No
     steam = None
     error_msg = None
     ban_status = ""
+    vac_status = ""
+    limit_status = ""
+    vac_games: list[str] = []
+    balance = ""
+    country = ""
 
     val_settings = read_validation_settings()
 
     login = account["login"]
     profile = None
     try:
-        await task_manager.set_step(task_id, 1, 4, "Авторизация", acc_id=account["id"])
+        await task_manager.set_step(task_id, 1, 6, "Авторизация", acc_id=account["id"])
         logger.info(f"[validate] {login}: logging in to Steam...")
         steam = await create_steam_session(account)
         status = "valid"
@@ -137,12 +142,20 @@ async def validate_account(account: dict, params: dict, task_id: str = "") -> No
 
         if status == "valid" and steam is not None:
             if val_settings.get("check_ban"):
-                await task_manager.set_step(task_id, 2, 4, "Проверка бана", acc_id=account["id"])
+                await task_manager.set_step(task_id, 2, 6, "Проверка бана", acc_id=account["id"])
                 logger.info(f"[validate] {login}: checking ban status...")
                 ban_status = await check_ban(steam)
                 logger.info(f"[validate] {login}: ban = {ban_status or 'none'}")
+                await task_manager.set_step(task_id, 3, 6, "Проверка VAC", acc_id=account["id"])
+                from app.services.steam_vac_checker import check_vac_and_limit
+                vac_status, limit_status, vac_games = await check_vac_and_limit(steam)
+                logger.info(f"[validate] {login}: vac={vac_status or 'none'}, limit={limit_status or 'none'}, games={vac_games}")
+            await task_manager.set_step(task_id, 4, 6, "Баланс / Страна", acc_id=account["id"])
+            from app.services.steam_store_checker import fetch_balance_and_country
+            balance, country = await fetch_balance_and_country(steam)
+            logger.info(f"[validate] {login}: balance={balance or 'none'}, country={country or 'none'}")
             if account.get("steam_id") and val_settings.get("fetch_profile"):
-                await task_manager.set_step(task_id, 3, 4, "Профиль", acc_id=account["id"])
+                await task_manager.set_step(task_id, 5, 6, "Профиль", acc_id=account["id"])
                 logger.info(f"[validate] {login}: fetching profile (id={account['steam_id']})...")
                 profile = await fetch_profile(account["steam_id"], steam=steam)
                 if profile:
@@ -150,7 +163,7 @@ async def validate_account(account: dict, params: dict, task_id: str = "") -> No
                 else:
                     logger.warning(f"[validate] {login}: failed to fetch profile")
 
-        await task_manager.set_step(task_id, 4, 4, "Сохранение", acc_id=account["id"])
+        await task_manager.set_step(task_id, 6, 6, "Сохранение", acc_id=account["id"])
         if steam is not None and status == "valid":
             try:
                 session_cookies = extract_session_cookies(steam)
@@ -177,10 +190,13 @@ async def validate_account(account: dict, params: dict, task_id: str = "") -> No
         if steam is not None:
             await close_steam(steam)
 
+    import json as _json
     db = await get_db()
     await db.execute(
-        "UPDATE accounts SET status = ?, ban_status = ?, updated_at = datetime('now') WHERE id = ?",
-        (status, ban_status or None, account["id"]),
+        "UPDATE accounts SET status = ?, ban_status = ?, vac_status = ?, limit_status = ?, vac_games = ?, balance = ?, country = ?, updated_at = datetime('now') WHERE id = ?",
+        (status, ban_status or None, vac_status or None, limit_status or None,
+         _json.dumps(vac_games) if vac_games else None,
+         balance or None, country or None, account["id"]),
     )
     await db.commit()
 

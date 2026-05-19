@@ -7,8 +7,9 @@ from loguru import logger
 
 from app.services.steam_auto_accept import mobile_login, get_pending_sessions, confirm_session
 from app.database import get_db
+from app.config import read_services_settings
 
-CHECK_INTERVAL = 15  # seconds
+_DEFAULT_INTERVAL = 15
 
 
 class AutoAcceptManager:
@@ -71,7 +72,8 @@ class AutoAcceptManager:
 
             while True:
                 try:
-                    await asyncio.sleep(CHECK_INTERVAL)
+                    interval = read_services_settings().get("auto_accept_interval", _DEFAULT_INTERVAL)
+                    await asyncio.sleep(interval)
 
                     client_ids = await get_pending_sessions(session, self._tokens[account_id])
 
@@ -100,7 +102,7 @@ class AutoAcceptManager:
                     return
                 except Exception as exc:
                     logger.error(f"[auto-accept] Loop error for {login}: {exc}")
-                    await asyncio.sleep(CHECK_INTERVAL)
+                    await asyncio.sleep(interval)
 
     async def stop_all(self) -> None:
         for aid in list(self._tasks):

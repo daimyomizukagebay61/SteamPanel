@@ -17,7 +17,13 @@ export interface Account {
   steam_level: number | null;
   last_online: string | null;
   auto_accept: number;
+  auto_confirm: number;
   ban_status: string | null;
+  vac_status: string | null;
+  limit_status: string | null;
+  vac_games: string | null;
+  balance: string | null;
+  country: string | null;
   has_cookies: boolean;
   has_revocation_code: boolean;
   created_at: string;
@@ -131,6 +137,11 @@ export interface ValidationSettings {
   auto_validate_on_import_token: boolean;
 }
 
+export interface ServicesSettings {
+  auto_accept_interval: number;
+  auto_confirm_interval: number;
+}
+
 export interface DisplaySettings {
   hide_passwords: boolean;
 }
@@ -148,12 +159,16 @@ export interface ColumnSettings {
   phone: boolean;
   status: boolean;
   ban: boolean;
+  vac: boolean;
+  limit: boolean;
   twofa: boolean;
   mafile: boolean;
   proxy: boolean;
   notes: boolean;
   actions: boolean;
   last_online: boolean;
+  balance: boolean;
+  country: boolean;
 }
 
 export interface LogpassColumnSettings {
@@ -165,6 +180,8 @@ export interface LogpassColumnSettings {
   login_pass: boolean;
   status: boolean;
   ban: boolean;
+  vac: boolean;
+  limit: boolean;
   prime: boolean;
   trophy: boolean;
   behavior: boolean;
@@ -173,6 +190,8 @@ export interface LogpassColumnSettings {
   notes: boolean;
   actions: boolean;
   last_online: boolean;
+  balance: boolean;
+  country: boolean;
 }
 
 export interface TokenColumnSettings {
@@ -183,9 +202,14 @@ export interface TokenColumnSettings {
   login: boolean;
   token: boolean;
   status: boolean;
+  ban: boolean;
+  vac: boolean;
+  limit: boolean;
   proxy: boolean;
   notes: boolean;
   actions: boolean;
+  balance: boolean;
+  country: boolean;
 }
 
 export interface LogEntry {
@@ -203,6 +227,11 @@ export interface LogpassAccount {
   proxy: string | null;
   status: string;
   ban_status: string | null;
+  vac_status: string | null;
+  limit_status: string | null;
+  vac_games: string | null;
+  balance: string | null;
+  country: string | null;
   nickname: string | null;
   steam_level: number | null;
   prime: string | null;
@@ -242,6 +271,11 @@ export interface TokenAccount {
   proxy: string | null;
   status: string;
   ban_status: string | null;
+  vac_status: string | null;
+  limit_status: string | null;
+  vac_games: string | null;
+  balance: string | null;
+  country: string | null;
   nickname: string | null;
   steam_level: number | null;
   avatar_url: string | null;

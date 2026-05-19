@@ -11,6 +11,10 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 SETTINGS_FILE = settings.data_dir / "settings.json"
 
 DEFAULTS = {
+    "services": {
+        "auto_accept_interval": 15,
+        "auto_confirm_interval": 30,
+    },
     "validation": {
         "fetch_profile": True,
         "check_ban": True,
@@ -39,6 +43,8 @@ DEFAULTS = {
         "phone": True,
         "status": True,
         "ban": True,
+        "vac": True,
+        "limit": True,
         "twofa": True,
         "mafile": True,
         "proxy": True,
@@ -53,6 +59,8 @@ DEFAULTS = {
         "login_pass": True,
         "status": True,
         "ban": True,
+        "vac": True,
+        "limit": True,
         "prime": True,
         "trophy": True,
         "behavior": True,
@@ -69,6 +77,9 @@ DEFAULTS = {
         "login": True,
         "token": True,
         "status": True,
+        "ban": True,
+        "vac": True,
+        "limit": True,
         "proxy": True,
         "notes": True,
         "actions": True,
@@ -85,6 +96,11 @@ def _read() -> dict:
 def _write(data: dict) -> None:
     SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), "utf-8")
+
+
+class ServicesSettings(BaseModel):
+    auto_accept_interval: int = 15
+    auto_confirm_interval: int = 30
 
 
 class ValidationSettings(BaseModel):
@@ -117,11 +133,27 @@ class ColumnSettings(BaseModel):
     phone: bool = True
     status: bool = True
     ban: bool = True
+    vac: bool = True
+    limit: bool = True
     twofa: bool = True
     mafile: bool = True
     proxy: bool = True
     actions: bool = True
     last_online: bool = True
+
+
+@router.get("/services", response_model=ServicesSettings)
+async def get_services_settings():
+    data = _read()
+    return data.get("services", DEFAULTS["services"])
+
+
+@router.put("/services", response_model=ServicesSettings)
+async def update_services_settings(body: ServicesSettings):
+    data = _read()
+    data["services"] = body.model_dump()
+    _write(data)
+    return data["services"]
 
 
 @router.get("/validation", response_model=ValidationSettings)
@@ -175,6 +207,8 @@ class LogpassColumnSettings(BaseModel):
     login_pass: bool = True
     status: bool = True
     ban: bool = True
+    vac: bool = True
+    limit: bool = True
     prime: bool = True
     trophy: bool = True
     behavior: bool = True
@@ -207,6 +241,9 @@ class TokenColumnSettings(BaseModel):
     login: bool = True
     token: bool = True
     status: bool = True
+    ban: bool = True
+    vac: bool = True
+    limit: bool = True
     proxy: bool = True
     notes: bool = True
     actions: bool = True

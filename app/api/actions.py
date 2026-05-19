@@ -66,7 +66,10 @@ async def generate_2fa_code(request: Generate2FARequest):
     """Server-side 2FA code generation from shared_secret."""
     from app.services.steam_guard import generate_2fa_code as gen_code
 
-    code = gen_code(request.shared_secret)
+    try:
+        code = gen_code(request.shared_secret)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid shared_secret: {exc}") from exc
     return {"code": code}
 
 
